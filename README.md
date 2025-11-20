@@ -114,10 +114,13 @@ mvn spring-boot:run
 
 ### Swagger UI - Documentation Interactive
 
+<img width="1920" height="1469" alt="screencapture-localhost-8080-api-v1-swagger-ui-index-html-2025-11-09-17_36_28" src="https://github.com/user-attachments/assets/ef653c7a-2716-4e43-ac5f-936519efa715" />
 
+---
 
 ### Diagramme UML - Modèle de Données
 
+<img width="1071" height="751" alt="Class" src="https://github.com/user-attachments/assets/e097de21-1524-4b83-bda6-edbd9c18dfd8" />
 
 ---
 
