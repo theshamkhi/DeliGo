@@ -1,6 +1,6 @@
 spring:
   application:
-    name: TocToc2
+    name: DeliGo
 
   datasource:
     url: jdbc:postgresql://localhost:5432/TocToc2

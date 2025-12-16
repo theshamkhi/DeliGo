@@ -8,11 +8,11 @@
         <version>3.5.7</version>
         <relativePath/>
     </parent>
-    <groupId>com.toctoc</groupId>
-    <artifactId>TocToc2</artifactId>
+    <groupId>com.shamkhi</groupId>
+    <artifactId>deligo</artifactId>
     <version>0.1.0</version>
-    <packaging>war</packaging>
-    <name>TocToc</name>
+    <packaging>jar</packaging>
+    <name>DeliGo</name>
     <description>Smart Delivery Management System</description>
 
     <properties>
