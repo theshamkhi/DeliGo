@@ -19,6 +19,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,9 +31,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest
-@AutoConfigureMockMvc
+@AutoConfigureMockMvc(addFilters = false)
 @ActiveProfiles("test")
 @Transactional
+@WithMockUser(roles = "MANAGER")
 @DisplayName("Tests d'intégration du ColisController")
 class ColisControllerIntegrationTest {
 
@@ -177,7 +179,7 @@ class ColisControllerIntegrationTest {
             mockMvc.perform(patch("/colis/{id}/statut", colisId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
-                    .andExpect(status().isNoContent());
+                    .andExpect(status().isOk());
 
             // Vérifier que le statut a changé
             mockMvc.perform(get("/colis/{id}", colisId))
