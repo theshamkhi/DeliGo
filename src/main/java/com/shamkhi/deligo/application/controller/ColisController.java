@@ -1,11 +1,11 @@
 package com.shamkhi.deligo.application.controller;
 
 import com.shamkhi.deligo.domain.colis.dto.*;
-import com.shamkhi.deligo.domain.colis.dto.*;
-import com.shamkhi.deligo.domain.colis.model.PrioriteColis;
-import com.shamkhi.deligo.domain.colis.model.StatutColis;
 import com.shamkhi.deligo.domain.colis.service.ColisService;
+import com.shamkhi.deligo.domain.security.model.User;
+import com.shamkhi.deligo.domain.security.repository.UserRepository;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -14,153 +14,164 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/colis")
 @RequiredArgsConstructor
 @Tag(name = "Colis", description = "Gestion des colis")
+@SecurityRequirement(name = "Bearer Authentication")
 public class ColisController {
 
-    private final ColisService colisService;
+    private final ColisService service;
+    private final UserRepository userRepository;
 
     @GetMapping
-    @Operation(summary = "Liste tous les colis avec pagination")
-    public ResponseEntity<Page<ColisDTO>> getAllColis(
+    @Operation(summary = "Liste tous les colis")
+    @PreAuthorize("hasAnyRole('MANAGER', 'LIVREUR', 'CLIENT')")
+    public ResponseEntity<Page<ColisDTO>> getAll(
             @PageableDefault(size = 20, sort = "dateCreation") Pageable pageable) {
-        return ResponseEntity.ok(colisService.getAllColis(pageable));
+
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String username = auth.getName();
+
+        // Si LIVREUR ou CLIENT, filtrer par leurs colis
+        if (auth.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_LIVREUR"))) {
+            User user = userRepository.findByUsername(username)
+                    .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
+
+            if (user.getLivreurId() != null) {
+                return ResponseEntity.ok(service.getColisByLivreur(user.getLivreurId(), pageable));
+            }
+        } else if (auth.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_CLIENT"))) {
+            User user = userRepository.findByUsername(username)
+                    .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
+
+            if (user.getClientExpediteurId() != null) {
+                return ResponseEntity.ok(service.getColisByClient(user.getClientExpediteurId(), pageable));
+            }
+        }
+
+        // MANAGER voit tout
+        return ResponseEntity.ok(service.getAllColis(pageable));
     }
 
     @GetMapping("/{id}")
-    @Operation(summary = "Récupère un colis par son ID")
-    public ResponseEntity<ColisDTO> getColisById(@PathVariable String id) {
-        return ResponseEntity.ok(colisService.getColisById(id));
+    @Operation(summary = "Récupère un colis par ID")
+    @PreAuthorize("hasAnyRole('MANAGER', 'LIVREUR', 'CLIENT')")
+    public ResponseEntity<ColisDTO> getById(@PathVariable String id) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String username = auth.getName();
+
+        ColisDTO colis = service.getColisById(id);
+
+        // Vérifier les droits d'accès
+        if (auth.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_LIVREUR"))) {
+            User user = userRepository.findByUsername(username)
+                    .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
+
+            if (!colis.getLivreurId().equals(user.getLivreurId())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+        } else if (auth.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_CLIENT"))) {
+            User user = userRepository.findByUsername(username)
+                    .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
+
+            if (!colis.getClientExpediteurId().equals(user.getClientExpediteurId())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+        }
+
+        return ResponseEntity.ok(colis);
     }
 
     @GetMapping("/search")
-    @Operation(summary = "Recherche des colis par mot-clé")
-    public ResponseEntity<Page<ColisDTO>> searchColis(
+    @Operation(summary = "Recherche de colis")
+    @PreAuthorize("hasAnyRole('MANAGER', 'LIVREUR', 'CLIENT')")
+    public ResponseEntity<Page<ColisDTO>> search(
             @RequestParam String keyword,
             @PageableDefault(size = 20) Pageable pageable) {
-        return ResponseEntity.ok(colisService.searchColis(keyword, pageable));
-    }
 
-    @GetMapping("/filter")
-    @Operation(summary = "Filtre les colis selon plusieurs critères")
-    public ResponseEntity<Page<ColisDTO>> filterColis(
-            @RequestParam(required = false) StatutColis statut,
-            @RequestParam(required = false) PrioriteColis priorite,
-            @RequestParam(required = false) String zoneId,
-            @RequestParam(required = false) String ville,
-            @RequestParam(required = false) String livreurId,
-            @PageableDefault(size = 20) Pageable pageable) {
-        return ResponseEntity.ok(
-                colisService.getColisByMultipleCriteria(statut, priorite, zoneId, ville, livreurId, pageable));
-    }
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
 
-    @GetMapping("/client/{clientId}")
-    @Operation(summary = "Liste les colis d'un client expéditeur")
-    public ResponseEntity<Page<ColisDTO>> getColisByClient(
-            @PathVariable String clientId,
-            @PageableDefault(size = 20) Pageable pageable) {
-        return ResponseEntity.ok(colisService.getColisByClientExpediteur(clientId, pageable));
-    }
+        // Appliquer les mêmes filtres que getAll
+        if (auth.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_MANAGER"))) {
+            return ResponseEntity.ok(service.searchColis(keyword, pageable));
+        }
 
-    @GetMapping("/destinataire/{destinataireId}")
-    @Operation(summary = "Liste les colis d'un destinataire")
-    public ResponseEntity<Page<ColisDTO>> getColisByDestinataire(
-            @PathVariable String destinataireId,
-            @PageableDefault(size = 20) Pageable pageable) {
-        return ResponseEntity.ok(colisService.getColisByDestinataire(destinataireId, pageable));
-    }
-
-    @GetMapping("/livreur/{livreurId}")
-    @Operation(summary = "Liste les colis assignés à un livreur")
-    public ResponseEntity<Page<ColisDTO>> getColisByLivreur(
-            @PathVariable String livreurId,
-            @PageableDefault(size = 20) Pageable pageable) {
-        return ResponseEntity.ok(colisService.getColisByLivreur(livreurId, pageable));
-    }
-
-    @GetMapping("/overdue")
-    @Operation(summary = "Liste les colis en retard")
-    public ResponseEntity<List<ColisDTO>> getOverdueColis() {
-        return ResponseEntity.ok(colisService.getOverdueColis());
+        // Pour LIVREUR et CLIENT, on peut ajouter une logique de filtrage
+        return ResponseEntity.ok(service.searchColis(keyword, pageable));
     }
 
     @PostMapping
-    @Operation(summary = "Crée un nouveau colis")
-    public ResponseEntity<ColisDTO> createColis(@Valid @RequestBody CreateColisRequest request) {
-        ColisDTO created = colisService.createColis(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(created);
+    @Operation(summary = "Crée un colis")
+    @PreAuthorize("hasAnyRole('MANAGER', 'CLIENT')")
+    public ResponseEntity<ColisDTO> create(@Valid @RequestBody CreateColisRequest request) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+
+        // Si CLIENT, s'assurer qu'il crée pour lui-même
+        if (auth.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_CLIENT"))) {
+            String username = auth.getName();
+            User user = userRepository.findByUsername(username)
+                    .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
+
+            if (!request.getClientExpediteurId().equals(user.getClientExpediteurId())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+        }
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(service.createColis(request));
     }
 
     @PutMapping("/{id}")
     @Operation(summary = "Met à jour un colis")
-    public ResponseEntity<ColisDTO> updateColis(
+    @PreAuthorize("hasRole('MANAGER')")
+    public ResponseEntity<ColisDTO> update(
             @PathVariable String id,
             @Valid @RequestBody UpdateColisRequest request) {
-        return ResponseEntity.ok(colisService.updateColis(id, request));
+        return ResponseEntity.ok(service.updateColis(id, request));
     }
 
     @PatchMapping("/{id}/statut")
     @Operation(summary = "Met à jour le statut d'un colis")
-    public ResponseEntity<Void> updateStatut(
+    @PreAuthorize("hasAnyRole('MANAGER', 'LIVREUR')")
+    public ResponseEntity<ColisDTO> updateStatut(
             @PathVariable String id,
             @Valid @RequestBody UpdateStatutRequest request) {
-        colisService.updateStatut(id, request);
-        return ResponseEntity.noContent().build();
+
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+
+        // Si LIVREUR, vérifier qu'il est assigné au colis
+        if (auth.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_LIVREUR"))) {
+            String username = auth.getName();
+            User user = userRepository.findByUsername(username)
+                    .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
+
+            ColisDTO colis = service.getColisById(id);
+            if (!colis.getLivreurId().equals(user.getLivreurId())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+        }
+
+        return ResponseEntity.ok(service.updateStatut(id, request));
     }
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Supprime un colis")
-    public ResponseEntity<Void> deleteColis(@PathVariable String id) {
-        colisService.deleteColis(id);
+    @PreAuthorize("hasRole('MANAGER')")
+    public ResponseEntity<Void> delete(@PathVariable String id) {
+        service.deleteColis(id);
         return ResponseEntity.noContent().build();
     }
 
-    // Historique
-    @GetMapping("/{id}/historique")
-    @Operation(summary = "Récupère l'historique d'un colis")
-    public ResponseEntity<List<HistoriqueLivraisonDTO>> getHistorique(@PathVariable String id) {
-        return ResponseEntity.ok(colisService.getHistoriqueByColis(id));
-    }
-
-    // Produits
-    @GetMapping("/{id}/produits")
-    @Operation(summary = "Liste les produits d'un colis")
-    public ResponseEntity<List<ColisProduitDTO>> getProduits(@PathVariable String id) {
-        return ResponseEntity.ok(colisService.getProduitsByColis(id));
-    }
-
-    @PostMapping("/{id}/produits")
-    @Operation(summary = "Ajoute un produit à un colis")
-    public ResponseEntity<ColisProduitDTO> addProduit(
-            @PathVariable String id,
-            @Valid @RequestBody AddProduitToColisRequest request) {
-        ColisProduitDTO added = colisService.addProduitToColis(id, request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(added);
-    }
-
-    @DeleteMapping("/produits/{colisProduitId}")
-    @Operation(summary = "Retire un produit d'un colis")
-    public ResponseEntity<Void> removeProduit(@PathVariable String colisProduitId) {
-        colisService.removeProduitFromColis(colisProduitId);
-        return ResponseEntity.noContent().build();
-    }
-
-    // Statistiques
-    @GetMapping("/statistics/livreur")
-    @Operation(summary = "Statistiques par livreur")
-    public ResponseEntity<List<ColisStatisticsDTO>> getStatsByLivreur() {
-        return ResponseEntity.ok(colisService.getStatisticsByLivreur());
-    }
-
-    @GetMapping("/statistics/zone")
-    @Operation(summary = "Statistiques par zone")
-    public ResponseEntity<List<ColisStatisticsDTO>> getStatsByZone() {
-        return ResponseEntity.ok(colisService.getStatisticsByZone());
+    @GetMapping("/statistiques")
+    @Operation(summary = "Récupère les statistiques des colis")
+    @PreAuthorize("hasRole('MANAGER')")
+    public ResponseEntity<ColisStatisticsDTO> getStatistics() {
+        return ResponseEntity.ok(service.getStatistics());
     }
 }
