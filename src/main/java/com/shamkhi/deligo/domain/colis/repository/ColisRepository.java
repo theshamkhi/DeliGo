@@ -28,62 +28,6 @@ public interface ColisRepository extends JpaRepository<Colis, String> {
     // Recherche par zone
     Page<Colis> findByZoneId(String zoneId, Pageable pageable);
 
-    // Recherche par livreur
-    Page<Colis> findByLivreurId(String livreurId, Pageable pageable);
-
-    // Recherche par client expéditeur
-    Page<Colis> findByClientExpediteurId(String clientId, Pageable pageable);
-
-    // Recherche par destinataire
-    Page<Colis> findByDestinataireId(String destinataireId, Pageable pageable);
-
-    // Recherche multi-critères
-    @Query("SELECT c FROM Colis c WHERE " +
-            "(:statut IS NULL OR c.statut = :statut) AND " +
-            "(:priorite IS NULL OR c.priorite = :priorite) AND " +
-            "(:zoneId IS NULL OR c.zone.id = :zoneId) AND " +
-            "(:ville IS NULL OR LOWER(c.villeDestination) LIKE LOWER(CONCAT('%', :ville, '%'))) AND " +
-            "(:livreurId IS NULL OR c.livreur.id = :livreurId)")
-    Page<Colis> findByMultipleCriteria(
-            @Param("statut") StatutColis statut,
-            @Param("priorite") PrioriteColis priorite,
-            @Param("zoneId") String zoneId,
-            @Param("ville") String ville,
-            @Param("livreurId") String livreurId,
-            Pageable pageable
-    );
-
-    // Recherche globale par mot-clé
-    @Query("SELECT c FROM Colis c WHERE " +
-            "LOWER(c.description) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
-            "LOWER(c.villeDestination) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
-            "LOWER(c.clientExpediteur.nom) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
-            "LOWER(c.destinataire.nom) LIKE LOWER(CONCAT('%', :keyword, '%'))")
-    Page<Colis> searchByKeyword(@Param("keyword") String keyword, Pageable pageable);
-
-    // Colis en retard
-    @Query("SELECT c FROM Colis c WHERE c.dateLimiteLivraison < :now AND c.statut NOT IN :excludedStatuses")
-    List<Colis> findOverdueColis(
-            @Param("now") LocalDateTime now,
-            @Param("excludedStatuses") List<StatutColis> excludedStatuses
-    );
-
-    // Statistiques par livreur
-    @Query("SELECT c.livreur.id, COUNT(c), SUM(c.poids) FROM Colis c " +
-            "WHERE c.livreur IS NOT NULL " +
-            "GROUP BY c.livreur.id")
-    List<Object[]> countAndSumWeightByLivreur();
-
-    // Statistiques par zone
-    @Query("SELECT c.zone.id, c.zone.nom, COUNT(c), SUM(c.poids) FROM Colis c " +
-            "WHERE c.zone IS NOT NULL " +
-            "GROUP BY c.zone.id, c.zone.nom")
-    List<Object[]> countAndSumWeightByZone();
-
-    // Statistiques par statut
-    @Query("SELECT c.statut, COUNT(c) FROM Colis c GROUP BY c.statut")
-    List<Object[]> countByStatut();
-
     // Statistiques par priorité
     @Query("SELECT c.priorite, COUNT(c) FROM Colis c GROUP BY c.priorite")
     List<Object[]> countByPriorite();
@@ -94,4 +38,58 @@ public interface ColisRepository extends JpaRepository<Colis, String> {
             @Param("livreurId") String livreurId,
             @Param("statut") StatutColis statut
     );
+
+    long countByStatut(StatutColis statut);
+    @Query("SELECT c.statut, COUNT(c) FROM Colis c GROUP BY c.statut")
+    List<Object[]> countByStatut();
+
+    @Query("SELECT COUNT(c) FROM Colis c WHERE c.dateLimiteLivraison < :now AND c.statut NOT IN :excludedStatuses")
+    long countOverdue(@Param("now") LocalDateTime now, @Param("excludedStatuses") List<StatutColis> excludedStatuses);
+
+    @Query("SELECT c FROM Colis c WHERE c.clientExpediteur.id = :clientExpediteurId")
+    Page<Colis> findByClientExpediteurId(@Param("clientExpediteurId") String clientExpediteurId, Pageable pageable);
+
+    @Query("SELECT c FROM Colis c WHERE c.destinataire.id = :destinataireId")
+    Page<Colis> findByDestinataireId(@Param("destinataireId") String destinataireId, Pageable pageable);
+
+    @Query("SELECT c FROM Colis c WHERE c.livreur.id = :livreurId")
+    Page<Colis> findByLivreurId(@Param("livreurId") String livreurId, Pageable pageable);
+
+    @Query("SELECT c FROM Colis c WHERE " +
+            "LOWER(c.description) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+            "LOWER(c.villeDestination) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+            "LOWER(c.clientExpediteur.nom) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+            "LOWER(c.destinataire.nom) LIKE LOWER(CONCAT('%', :keyword, '%'))")
+    Page<Colis> searchByKeyword(@Param("keyword") String keyword, Pageable pageable);
+
+    @Query("SELECT c FROM Colis c WHERE " +
+            "(:statut IS NULL OR c.statut = :statut) AND " +
+            "(:priorite IS NULL OR c.priorite = :priorite) AND " +
+            "(:zoneId IS NULL OR c.zone.id = :zoneId) AND " +
+            "(:ville IS NULL OR LOWER(c.villeDestination) LIKE LOWER(CONCAT('%', :ville, '%'))) AND " +
+            "(:livreurId IS NULL OR c.livreur.id = :livreurId)")
+    Page<Colis> findByMultipleCriteria(
+            @Param("statut") StatutColis statut,
+            @Param("priorite") com.shamkhi.deligo.domain.colis.model.PrioriteColis priorite,
+            @Param("zoneId") String zoneId,
+            @Param("ville") String ville,
+            @Param("livreurId") String livreurId,
+            Pageable pageable
+    );
+
+    @Query("SELECT c FROM Colis c WHERE c.dateLimiteLivraison < :now AND c.statut NOT IN :excludedStatuses")
+    List<Colis> findOverdueColis(
+            @Param("now") LocalDateTime now,
+            @Param("excludedStatuses") List<StatutColis> excludedStatuses
+    );
+
+    @Query("SELECT c.livreur.id, c.livreur.nom, c.livreur.prenom, COUNT(c), SUM(c.poids) " +
+            "FROM Colis c WHERE c.livreur IS NOT NULL " +
+            "GROUP BY c.livreur.id, c.livreur.nom, c.livreur.prenom")
+    List<Object[]> countAndSumWeightByLivreur();
+
+    @Query("SELECT c.zone.id, c.zone.nom, COUNT(c), SUM(c.poids) " +
+            "FROM Colis c WHERE c.zone IS NOT NULL " +
+            "GROUP BY c.zone.id, c.zone.nom")
+    List<Object[]> countAndSumWeightByZone();
 }
