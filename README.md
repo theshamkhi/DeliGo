@@ -512,7 +512,7 @@ DELETE /api/v1/produits/{id}            # Delete product (MANAGER)
 
 ### Swagger UI - Interactive API Documentation
 
-![Swagger UI](docs/images/swagger-ui.png)
+<img width="1896" height="902" alt="Screenshot 2025-12-17 181328" src="https://github.com/user-attachments/assets/f35512c7-e6fc-4acd-b803-197bd6bdc108" />
 *Complete API documentation with authentication support*
 
 ### UML Class Diagram
@@ -522,12 +522,14 @@ DELETE /api/v1/produits/{id}            # Delete product (MANAGER)
 
 ### JaCoCo Code Coverage Report
 
-![JaCoCo Coverage](docs/images/jacoco-coverage.png)
-*Test coverage report - Target: 90%+*
+<img width="1919" height="906" alt="Screenshot 2025-12-17 190208" src="https://github.com/user-attachments/assets/fc2193e4-cd03-4825-814f-23355e7b43f6" />
+
+*Test coverage report - Target: 60%+*
 
 ### SonarQube Quality Analysis
 
-![SonarQube Dashboard](docs/images/sonarqube-dashboard.png)
+<img width="1919" height="906" alt="Screenshot 2025-12-17 195330" src="https://github.com/user-attachments/assets/761e9c63-6284-445c-a3ad-530c3db4fc9e" />
+
 *Code quality metrics and technical debt analysis*
 
 ---
