@@ -5,10 +5,7 @@ import com.shamkhi.deligo.domain.client.model.ClientExpediteur;
 import com.shamkhi.deligo.domain.client.model.Destinataire;
 import com.shamkhi.deligo.domain.colis.dto.*;
 import com.shamkhi.deligo.domain.colis.model.*;
-import com.shamkhi.deligo.domain.colis.dto.*;
-import com.shamkhi.deligo.domain.colis.model.*;
 import com.shamkhi.deligo.domain.livraison.model.Zone;
-import com.shamkhi.deligo.domain.client.model.*;
 import com.shamkhi.deligo.domain.colis.repository.ColisRepository;
 import com.shamkhi.deligo.domain.colis.repository.ColisProduitRepository;
 import com.shamkhi.deligo.domain.colis.repository.HistoriqueLivraisonRepository;
@@ -78,6 +75,11 @@ public class ColisService {
     public Page<ColisDTO> getColisByClientExpediteur(String clientId, Pageable pageable) {
         log.info("Récupération des colis du client expéditeur: {}", clientId);
         return colisRepository.findByClientExpediteurId(clientId, pageable).map(colisMapper::toDTO);
+    }
+
+
+    public Page<ColisDTO> getColisByClient(String clientId, Pageable pageable) {
+        return getColisByClientExpediteur(clientId, pageable);
     }
 
     public Page<ColisDTO> getColisByDestinataire(String destinataireId, Pageable pageable) {
@@ -154,7 +156,7 @@ public class ColisService {
     }
 
     @Transactional
-    public void updateStatut(String id, UpdateStatutRequest request) {
+    public ColisDTO updateStatut(String id, UpdateStatutRequest request) {
         log.info("Mise à jour du statut du colis: {} vers {}", id, request.getStatut());
 
         Colis colis = findColisById(id);
@@ -162,16 +164,17 @@ public class ColisService {
 
         if (oldStatut == request.getStatut()) {
             log.warn("Le statut est déjà: {}", request.getStatut());
-            return;
+            return colisMapper.toDTO(colis);
         }
 
         colis.setStatut(request.getStatut());
         updateDatesByStatut(colis, request.getStatut());
 
-        colisRepository.save(colis);
+        colis = colisRepository.save(colis);
         createHistorique(colis, request.getStatut(), request.getCommentaire(), request.getModifiePar());
 
         log.info("Statut mis à jour avec succès");
+        return colisMapper.toDTO(colis);
     }
 
     @Transactional
@@ -242,6 +245,24 @@ public class ColisService {
     }
 
     // Statistiques
+    public ColisStatisticsDTO getStatistics() {
+        log.info("Calcul des statistiques globales des colis");
+
+        long totalColis = colisRepository.count();
+
+        // Compter par statut
+        long enCours = colisRepository.countByStatut(StatutColis.EN_TRANSIT);
+        long livres = colisRepository.countByStatut(StatutColis.LIVRE);
+        long enRetard = colisRepository.countOverdue(LocalDateTime.now(),
+                Arrays.asList(StatutColis.LIVRE, StatutColis.ANNULE, StatutColis.RETOURNE));
+
+        ColisStatisticsDTO stats = new ColisStatisticsDTO();
+        stats.setCount(totalColis);
+        stats.setEntityName("Global");
+
+        return stats;
+    }
+
     public List<ColisStatisticsDTO> getStatisticsByLivreur() {
         log.info("Calcul des statistiques par livreur");
         List<Object[]> results = colisRepository.countAndSumWeightByLivreur();
@@ -304,8 +325,4 @@ public class ColisService {
         }
         return stats;
     }
-
-
-
-
 }
