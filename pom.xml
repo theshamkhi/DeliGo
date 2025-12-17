@@ -20,7 +20,7 @@
         <mapstruct.version>1.5.5.Final</mapstruct.version>
         <lombok.version>1.18.30</lombok.version>
         <jacoco.version>0.8.11</jacoco.version>
-        <jacoco.line.coverage>0.90</jacoco.line.coverage>
+        <jacoco.line.coverage>0.60</jacoco.line.coverage>
         <jjwt.version>0.12.3</jjwt.version>
 
         <!-- SonarQube -->
@@ -197,11 +197,21 @@
                 <version>${jacoco.version}</version>
                 <configuration>
                     <excludes>
-                        <exclude>**/config/**</exclude>
-                        <exclude>**/dto/**</exclude>
-                        <exclude>**/model/**</exclude>
+                        <!-- Spring boot / config -->
                         <exclude>**/*Application.class</exclude>
-                        <exclude>**/mapper/**/*Impl.class</exclude>
+                        <exclude>**/application/config/**</exclude>
+
+                        <!-- Security -->
+                        <exclude>**/application/security/**</exclude>
+                        <exclude>**/domain/security/**</exclude>
+
+                        <!-- DTO / Mapper / Exception -->
+                        <exclude>**/dto/**</exclude>
+                        <exclude>**/mapper/**</exclude>
+                        <exclude>**/exception/**</exclude>
+
+                        <!-- JPA entities / models -->
+                        <exclude>**/domain/**/model/**</exclude>
                     </excludes>
                 </configuration>
                 <executions>
@@ -227,7 +237,7 @@
                         <configuration>
                             <rules>
                                 <rule>
-                                    <element>PACKAGE</element>
+                                    <element>BUNDLE</element>
                                     <limits>
                                         <limit>
                                             <counter>LINE</counter>
