@@ -1,0 +1,402 @@
+databaseChangeLog:
+  - changeSet:
+      id: 003-init-security-data
+      author: shamkhi
+      changes:
+        # Insérer les rôles de base
+        - insert:
+            tableName: roles
+            columns:
+              - column:
+                  name: id
+                  value: role-001
+              - column:
+                  name: name
+                  value: ROLE_MANAGER
+              - column:
+                  name: description
+                  value: Gestionnaire avec accès complet au système
+
+        - insert:
+            tableName: roles
+            columns:
+              - column:
+                  name: id
+                  value: role-002
+              - column:
+                  name: name
+                  value: ROLE_LIVREUR
+              - column:
+                  name: description
+                  value: Livreur avec accès limité aux colis assignés
+
+        - insert:
+            tableName: roles
+            columns:
+              - column:
+                  name: id
+                  value: role-003
+              - column:
+                  name: name
+                  value: ROLE_CLIENT
+              - column:
+                  name: description
+                  value: Client expéditeur avec accès à ses propres colis
+
+        # Insérer les permissions de base
+
+        # Permissions COLIS
+        - insert:
+            tableName: permissions
+            columns:
+              - column:
+                  name: id
+                  value: perm-001
+              - column:
+                  name: name
+                  value: READ_COLIS
+              - column:
+                  name: description
+                  value: Consulter les colis
+              - column:
+                  name: resource
+                  value: COLIS
+              - column:
+                  name: action
+                  value: READ
+
+        - insert:
+            tableName: permissions
+            columns:
+              - column:
+                  name: id
+                  value: perm-002
+              - column:
+                  name: name
+                  value: WRITE_COLIS
+              - column:
+                  name: description
+                  value: Créer des colis
+              - column:
+                  name: resource
+                  value: COLIS
+              - column:
+                  name: action
+                  value: WRITE
+
+        - insert:
+            tableName: permissions
+            columns:
+              - column:
+                  name: id
+                  value: perm-003
+              - column:
+                  name: name
+                  value: UPDATE_COLIS
+              - column:
+                  name: description
+                  value: Modifier des colis
+              - column:
+                  name: resource
+                  value: COLIS
+              - column:
+                  name: action
+                  value: UPDATE
+
+        - insert:
+            tableName: permissions
+            columns:
+              - column:
+                  name: id
+                  value: perm-004
+              - column:
+                  name: name
+                  value: DELETE_COLIS
+              - column:
+                  name: description
+                  value: Supprimer des colis
+              - column:
+                  name: resource
+                  value: COLIS
+              - column:
+                  name: action
+                  value: DELETE
+
+        - insert:
+            tableName: permissions
+            columns:
+              - column:
+                  name: id
+                  value: perm-005
+              - column:
+                  name: name
+                  value: UPDATE_STATUT_COLIS
+              - column:
+                  name: description
+                  value: Mettre à jour le statut des colis
+              - column:
+                  name: resource
+                  value: COLIS
+              - column:
+                  name: action
+                  value: UPDATE_STATUT
+
+        # Permissions LIVREUR
+        - insert:
+            tableName: permissions
+            columns:
+              - column:
+                  name: id
+                  value: perm-006
+              - column:
+                  name: name
+                  value: MANAGE_LIVREURS
+              - column:
+                  name: description
+                  value: Gérer les livreurs
+              - column:
+                  name: resource
+                  value: LIVREUR
+              - column:
+                  name: action
+                  value: MANAGE
+
+        # Permissions ZONE
+        - insert:
+            tableName: permissions
+            columns:
+              - column:
+                  name: id
+                  value: perm-007
+              - column:
+                  name: name
+                  value: MANAGE_ZONES
+              - column:
+                  name: description
+                  value: Gérer les zones de livraison
+              - column:
+                  name: resource
+                  value: ZONE
+              - column:
+                  name: action
+                  value: MANAGE
+
+        # Permissions CLIENT
+        - insert:
+            tableName: permissions
+            columns:
+              - column:
+                  name: id
+                  value: perm-008
+              - column:
+                  name: name
+                  value: MANAGE_CLIENTS
+              - column:
+                  name: description
+                  value: Gérer les clients expéditeurs
+              - column:
+                  name: resource
+                  value: CLIENT
+              - column:
+                  name: action
+                  value: MANAGE
+
+        # Permissions STATISTIQUES
+        - insert:
+            tableName: permissions
+            columns:
+              - column:
+                  name: id
+                  value: perm-009
+              - column:
+                  name: name
+                  value: VIEW_STATISTICS
+              - column:
+                  name: description
+                  value: Consulter les statistiques
+              - column:
+                  name: resource
+                  value: STATISTICS
+              - column:
+                  name: action
+                  value: READ
+
+        # Assigner les permissions au rôle MANAGER (toutes les permissions)
+        - insert:
+            tableName: role_permissions
+            columns:
+              - column:
+                  name: role_id
+                  value: role-001
+              - column:
+                  name: permission_id
+                  value: perm-001
+
+        - insert:
+            tableName: role_permissions
+            columns:
+              - column:
+                  name: role_id
+                  value: role-001
+              - column:
+                  name: permission_id
+                  value: perm-002
+
+        - insert:
+            tableName: role_permissions
+            columns:
+              - column:
+                  name: role_id
+                  value: role-001
+              - column:
+                  name: permission_id
+                  value: perm-003
+
+        - insert:
+            tableName: role_permissions
+            columns:
+              - column:
+                  name: role_id
+                  value: role-001
+              - column:
+                  name: permission_id
+                  value: perm-004
+
+        - insert:
+            tableName: role_permissions
+            columns:
+              - column:
+                  name: role_id
+                  value: role-001
+              - column:
+                  name: permission_id
+                  value: perm-005
+
+        - insert:
+            tableName: role_permissions
+            columns:
+              - column:
+                  name: role_id
+                  value: role-001
+              - column:
+                  name: permission_id
+                  value: perm-006
+
+        - insert:
+            tableName: role_permissions
+            columns:
+              - column:
+                  name: role_id
+                  value: role-001
+              - column:
+                  name: permission_id
+                  value: perm-007
+
+        - insert:
+            tableName: role_permissions
+            columns:
+              - column:
+                  name: role_id
+                  value: role-001
+              - column:
+                  name: permission_id
+                  value: perm-008
+
+        - insert:
+            tableName: role_permissions
+            columns:
+              - column:
+                  name: role_id
+                  value: role-001
+              - column:
+                  name: permission_id
+                  value: perm-009
+
+        # Assigner les permissions au rôle LIVREUR
+        - insert:
+            tableName: role_permissions
+            columns:
+              - column:
+                  name: role_id
+                  value: role-002
+              - column:
+                  name: permission_id
+                  value: perm-001  # READ_COLIS
+
+        - insert:
+            tableName: role_permissions
+            columns:
+              - column:
+                  name: role_id
+                  value: role-002
+              - column:
+                  name: permission_id
+                  value: perm-005  # UPDATE_STATUT_COLIS
+
+        # Assigner les permissions au rôle CLIENT
+        - insert:
+            tableName: role_permissions
+            columns:
+              - column:
+                  name: role_id
+                  value: role-003
+              - column:
+                  name: permission_id
+                  value: perm-001  # READ_COLIS
+
+        - insert:
+            tableName: role_permissions
+            columns:
+              - column:
+                  name: role_id
+                  value: role-003
+              - column:
+                  name: permission_id
+                  value: perm-002  # WRITE_COLIS
+
+        # Créer un utilisateur administrateur par défaut
+        # Mot de passe: admin123 (encodé avec BCrypt)
+        - insert:
+            tableName: users
+            columns:
+              - column:
+                  name: id
+                  value: user-admin-001
+              - column:
+                  name: username
+                  value: admin
+              - column:
+                  name: email
+                  value: admin@deligo.com
+              - column:
+                  name: password
+                  value: $2a$10$qKzN8JYVhQxJ3WXqKZvPUu5jMVhd8KULKd7AZEPCvAJqK0xP9ZYHS
+              - column:
+                  name: nom
+                  value: Administrateur
+              - column:
+                  name: prenom
+                  value: Système
+              - column:
+                  name: telephone
+                  value: '0600000000'
+              - column:
+                  name: actif
+                  valueBoolean: true
+              - column:
+                  name: date_creation
+                  valueDate: now()
+              - column:
+                  name: date_modification
+                  valueDate: now()
+
+        # Assigner le rôle MANAGER à l'admin
+        - insert:
+            tableName: user_roles
+            columns:
+              - column:
+                  name: user_id
+                  value: user-admin-001
+              - column:
+                  name: role_id
+                  value: role-001
