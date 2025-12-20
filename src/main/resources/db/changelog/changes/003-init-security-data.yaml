@@ -370,7 +370,7 @@ databaseChangeLog:
                   value: admin@deligo.com
               - column:
                   name: password
-                  value: $2a$10$qKzN8JYVhQxJ3WXqKZvPUu5jMVhd8KULKd7AZEPCvAJqK0xP9ZYHS
+                  value: $2a$10$3Z0zO5YRzC5WujE9BV8cDuQRbq/yp1gdaNwy5G6EsyZ6b2GFV1RHe
               - column:
                   name: nom
                   value: Administrateur
