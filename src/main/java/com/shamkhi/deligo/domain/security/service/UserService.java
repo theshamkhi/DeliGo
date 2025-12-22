@@ -13,8 +13,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,6 +36,7 @@ public class UserService {
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
     private final SecurityMapper securityMapper;
+    private final UserDetailsService userDetailsService;
 
     @Transactional
     public LoginResponse login(LoginRequest request) {
@@ -48,8 +49,9 @@ public class UserService {
 
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
 
-        // Générer le token JWT
-        String token = jwtService.generateToken(userDetails);
+        // Générer les tokens JWT
+        String accessToken = jwtService.generateToken(userDetails);
+        String refreshToken = jwtService.generateRefreshToken(userDetails);
 
         // Récupérer les informations complètes de l'utilisateur
         User user = userRepository.findByUsername(request.getUsername())
@@ -68,7 +70,8 @@ public class UserService {
         log.info("Connexion réussie pour l'utilisateur: {}", request.getUsername());
 
         return LoginResponse.builder()
-                .token(token)
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
                 .type("Bearer")
                 .id(user.getId())
                 .username(user.getUsername())
@@ -77,6 +80,34 @@ public class UserService {
                 .prenom(user.getPrenom())
                 .roles(roles)
                 .permissions(permissions)
+                .build();
+    }
+
+    @Transactional
+    public TokenRefreshResponse refreshToken(String refreshToken) {
+        log.info("Tentative de rafraîchissement du token");
+
+        // Valider le refresh token
+        if (!jwtService.validateRefreshToken(refreshToken)) {
+            throw new IllegalArgumentException("Refresh token invalide ou expiré");
+        }
+
+        // Extraire le username du refresh token
+        String username = jwtService.extractUsername(refreshToken);
+
+        // Charger les détails de l'utilisateur
+        UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+
+        // Générer de nouveaux tokens
+        String newAccessToken = jwtService.generateToken(userDetails);
+        String newRefreshToken = jwtService.generateRefreshToken(userDetails);
+
+        log.info("Token rafraîchi avec succès pour l'utilisateur: {}", username);
+
+        return TokenRefreshResponse.builder()
+                .accessToken(newAccessToken)
+                .refreshToken(newRefreshToken)
+                .type("Bearer")
                 .build();
     }
 
@@ -216,5 +247,4 @@ public class UserService {
         user.setActif(false);
         userRepository.save(user);
     }
-
 }
