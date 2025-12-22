@@ -34,7 +34,10 @@ spring:
 # JWT Configuration
 jwt:
   secret: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
-  expiration: 86400000  # 24 hour
+  expiration: 3600000
+  # Access token: 1 heure (3600000 ms)
+  refresh-expiration: 604800000
+  # Refresh token: 7 jours (604800000 ms)
 
 # Logging configuration
 logging:
