@@ -11,7 +11,8 @@ import java.util.Set;
 @AllArgsConstructor
 @Builder
 public class LoginResponse {
-    private String token;
+    private String accessToken;
+    private String refreshToken;
     private String type = "Bearer";
     private String id;
     private String username;
