@@ -27,6 +27,9 @@ public class JwtService {
     @Value("${jwt.expiration}")
     private Long expiration;
 
+    @Value("${jwt.refresh-expiration}")
+    private Long refreshExpiration;
+
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
     }
@@ -57,6 +60,17 @@ public class JwtService {
         return (username.equals(userDetails.getUsername()) && !isTokenExpired(token));
     }
 
+    public Boolean validateRefreshToken(String token) {
+        try {
+            Claims claims = extractAllClaims(token);
+            String tokenType = claims.get("type", String.class);
+            return "refresh".equals(tokenType) && !isTokenExpired(token);
+        } catch (Exception e) {
+            log.error("Erreur de validation du refresh token: {}", e.getMessage());
+            return false;
+        }
+    }
+
     public String generateToken(UserDetails userDetails) {
         Map<String, Object> claims = new HashMap<>();
 
@@ -73,16 +87,24 @@ public class JwtService {
 
         claims.put("roles", roles);
         claims.put("permissions", permissions);
+        claims.put("type", "access");
 
-        return createToken(claims, userDetails.getUsername());
+        return createToken(claims, userDetails.getUsername(), expiration);
     }
 
-    private String createToken(Map<String, Object> claims, String subject) {
+    public String generateRefreshToken(UserDetails userDetails) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("type", "refresh");
+
+        return createToken(claims, userDetails.getUsername(), refreshExpiration);
+    }
+
+    private String createToken(Map<String, Object> claims, String subject, Long expirationTime) {
         return Jwts.builder()
                 .claims(claims)
                 .subject(subject)
                 .issuedAt(new Date(System.currentTimeMillis()))
-                .expiration(new Date(System.currentTimeMillis() + expiration))
+                .expiration(new Date(System.currentTimeMillis() + expirationTime))
                 .signWith(getSignKey())
                 .compact();
     }
