@@ -1,9 +1,6 @@
 package com.shamkhi.deligo.application.controller;
 
-import com.shamkhi.deligo.domain.security.dto.LoginRequest;
-import com.shamkhi.deligo.domain.security.dto.LoginResponse;
-import com.shamkhi.deligo.domain.security.dto.RegisterRequest;
-import com.shamkhi.deligo.domain.security.dto.UserDTO;
+import com.shamkhi.deligo.domain.security.dto.*;
 import com.shamkhi.deligo.domain.security.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -37,6 +34,13 @@ public class AuthController {
         return ResponseEntity.status(HttpStatus.CREATED).body(user);
     }
 
+    @PostMapping("/refresh")
+    @Operation(summary = "Rafraîchir le token d'accès")
+    public ResponseEntity<TokenRefreshResponse> refreshToken(@Valid @RequestBody RefreshTokenRequest request) {
+        TokenRefreshResponse response = userService.refreshToken(request.getRefreshToken());
+        return ResponseEntity.ok(response);
+    }
+
     @GetMapping("/profile")
     @Operation(summary = "Récupère les informations de l'utilisateur connecté")
     public ResponseEntity<UserDTO> getCurrentUser() {
@@ -49,6 +53,6 @@ public class AuthController {
     @PostMapping("/logout")
     @Operation(summary = "Déconnexion (côté client uniquement)")
     public ResponseEntity<String> logout() {
-        return ResponseEntity.ok("Déconnexion réussie. Veuillez supprimer le token côté client.");
+        return ResponseEntity.ok("Déconnexion réussie. Veuillez supprimer les tokens côté client.");
     }
 }
