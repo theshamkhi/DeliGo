@@ -31,13 +31,29 @@ spring:
     change-log: classpath:db/changelog/db.changelog-master.yaml
     default-schema: public
 
+  # OAuth2 Configuration - Google
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID}
+            client-secret: ${GOOGLE_CLIENT_SECRET}
+            scope:
+              - email
+              - profile
+            redirect-uri: "{baseUrl}/oauth2/callback/{registrationId}"
+
+# Application OAuth2 Configuration
+app:
+  oauth2:
+    redirect-uri: http://localhost:4200/oauth2/redirect
+
 # JWT Configuration
 jwt:
   secret: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
   expiration: 3600000
-  # Access token: 1 heure (3600000 ms)
   refresh-expiration: 604800000
-  # Refresh token: 7 jours (604800000 ms)
 
 # Logging configuration
 logging:
