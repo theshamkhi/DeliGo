@@ -1,0 +1,53 @@
+databaseChangeLog:
+  - changeSet:
+      id: 004-add-oauth2-fields
+      author: shamkhi
+      changes:
+        - addColumn:
+            tableName: users
+            columns:
+              - column:
+                  name: provider
+                  type: VARCHAR(20)
+                  defaultValue: 'LOCAL'
+                  constraints:
+                    nullable: false
+
+        - addColumn:
+            tableName: users
+            columns:
+              - column:
+                  name: provider_id
+                  type: VARCHAR(100)
+
+        # Rendre la colonne password nullable pour les utilisateurs OAuth2
+        - dropNotNullConstraint:
+            tableName: users
+            columnName: password
+            columnDataType: VARCHAR(255)
+
+        - createIndex:
+            tableName: users
+            indexName: idx_users_provider_provider_id
+            columns:
+              - column:
+                  name: provider
+              - column:
+                  name: provider_id
+
+        - addUniqueConstraint:
+            tableName: users
+            columnNames: provider, provider_id
+            constraintName: uk_users_provider_provider_id
+
+        # Mettre à jour les utilisateurs existants avec la valeur par défaut
+        - sql:
+            sql: UPDATE users SET provider = 'LOCAL' WHERE provider IS NULL
+
+        - sql:
+            sql: |
+              COMMENT ON COLUMN users.provider IS 'Type de fournisseur d''authentification: LOCAL ou GOOGLE'
+
+        - sql:
+            sql: |
+              COMMENT ON COLUMN users.provider_id IS 'Identifiant unique fourni par le provider OAuth2 (Google sub)'
