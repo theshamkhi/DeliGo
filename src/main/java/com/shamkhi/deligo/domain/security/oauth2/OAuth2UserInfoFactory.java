@@ -12,6 +12,10 @@ public class OAuth2UserInfoFactory {
     public static OAuth2UserInfo getOAuth2UserInfo(String registrationId, Map<String, Object> attributes) {
         if (registrationId.equalsIgnoreCase(AuthProvider.GOOGLE.toString())) {
             return new GoogleOAuth2UserInfo(attributes);
+        } else if (registrationId.equalsIgnoreCase(AuthProvider.FACEBOOK.toString())) {
+            return new FacebookOAuth2UserInfo(attributes);
+        } else if (registrationId.equalsIgnoreCase(AuthProvider.AUTH0.toString())) {
+            return new Auth0OAuth2UserInfo(attributes);
         }
 
         throw new IllegalArgumentException("Désolé ! La connexion avec " + registrationId + " n'est pas supportée.");
