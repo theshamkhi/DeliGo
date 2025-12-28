@@ -5,5 +5,5 @@ public enum AuthProvider {
     GOOGLE,
     APPLE,
     FACEBOOK,
-    OKTA
+    AUTH0
 }
