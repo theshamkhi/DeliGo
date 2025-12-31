@@ -38,8 +38,7 @@ public class User {
     @Column(name = "email", nullable = false, unique = true, length = 150)
     private String email;
 
-    @NotBlank(message = "Le mot de passe est obligatoire")
-    @Column(name = "password", nullable = false)
+    @Column(name = "password")
     private String password;
 
     @NotBlank(message = "Le nom est obligatoire")
@@ -57,6 +56,14 @@ public class User {
 
     @Column(name = "actif", nullable = false)
     private Boolean actif = true;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "provider", nullable = false, length = 20)
+    @Builder.Default
+    private AuthProvider provider = AuthProvider.LOCAL;
+
+    @Column(name = "provider_id", length = 100)
+    private String providerId;
 
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
@@ -84,6 +91,9 @@ public class User {
         dateModification = LocalDateTime.now();
         if (actif == null) {
             actif = true;
+        }
+        if (provider == null) {
+            provider = AuthProvider.LOCAL;
         }
     }
 

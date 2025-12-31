@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  # This is Jenkins - will run on http://localhost:8081
+  jenkins:
+    image: jenkins/jenkins:lts        # Download Jenkins from Docker Hub
+    container_name: jenkins            # Name the container "jenkins"
+    privileged: true                   # Give it permissions to run Docker inside
+    user: root                         # Run as root user
+    ports:
+      - "8081:8080"                    # Access Jenkins at http://localhost:8081
+      - "50000:50000"                  # For Jenkins agents (not important now)
+    volumes:
+      - jenkins-data:/var/jenkins_home              # Store Jenkins data
+      - /var/run/docker.sock:/var/run/docker.sock  # Let Jenkins use Docker
+    networks:
+      - jenkins-network
+
+networks:
+  jenkins-network:
+    driver: bridge
+
+volumes:
+  jenkins-data:
