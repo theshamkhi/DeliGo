@@ -5,3 +5,5 @@ databaseChangeLog:
       file: db/changelog/changes/002-create-security-tables.yaml
   - include:
       file: db/changelog/changes/003-init-security-data.yaml
+  - include:
+      file: db/changelog/changes/004-add-oauth2-fields.yaml

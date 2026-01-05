@@ -31,7 +31,7 @@ spring:
     change-log: classpath:db/changelog/db.changelog-master.yaml
     default-schema: public
 
-  # OAuth2 Configuration - Google
+  # OAuth2 Configuration - Google, Facebook, Auth0
   security:
     oauth2:
       client:
@@ -44,16 +44,46 @@ spring:
               - profile
             redirect-uri: "{baseUrl}/oauth2/callback/{registrationId}"
 
+          facebook:
+            client-id: ${FACEBOOK_CLIENT_ID}
+            client-secret: ${FACEBOOK_CLIENT_SECRET}
+            scope:
+              - email
+              - public_profile
+            redirect-uri: "{baseUrl}/oauth2/callback/{registrationId}"
+
+          auth0:
+            client-id: ${AUTH0_CLIENT_ID}
+            client-secret: ${AUTH0_CLIENT_SECRET}
+            scope:
+              - openid
+              - email
+              - profile
+            redirect-uri: "{baseUrl}/oauth2/callback/{registrationId}"
+            authorization-grant-type: authorization_code
+            client-name: Auth0
+
+        # Provider Configuration
+        provider:
+          auth0:
+            issuer-uri: ${AUTH0_ISSUER_URI}
+            # These are automatically derived from issuer-uri:
+            # authorization-uri: ${AUTH0_ISSUER_URI}authorize
+            # token-uri: ${AUTH0_ISSUER_URI}oauth/token
+            # user-info-uri: ${AUTH0_ISSUER_URI}userinfo
+            # jwk-set-uri: ${AUTH0_ISSUER_URI}.well-known/jwks.json
+            user-name-attribute: sub
+
 # Application OAuth2 Configuration
 app:
   oauth2:
-    redirect-uri: http://localhost:4200/oauth2/redirect
+    redirect-uri: ${OAUTH2_REDIRECT_URI}
 
 # JWT Configuration
 jwt:
-  secret: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
-  expiration: 3600000
-  refresh-expiration: 604800000
+  secret: ${JWT_SECRET}
+  expiration: ${JWT_EXPIRATION}
+  refresh-expiration: ${JWT_REFRESH_EXPIRATION}
 
 # Logging configuration
 logging:
