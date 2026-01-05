@@ -39,3 +39,9 @@ build/
 
 ### VS Code ###
 .vscode/
+
+# Jenkins
+jenkins-data/
+
+# Docker
+.docker/
