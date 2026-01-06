@@ -66,6 +66,18 @@ pipeline {
             }
         }
 
+        stage('Setup Network') {
+            steps {
+                echo "🌐 Setting up Docker network..."
+                script {
+                    sh """
+                        docker network create ${NETWORK_NAME} 2>/dev/null || true
+                        echo "✅ Network ready: ${NETWORK_NAME}"
+                    """
+                }
+            }
+        }
+
         stage('Stop Old Container') {
             steps {
                 echo "🛑 Stopping old container..."
@@ -138,7 +150,7 @@ pipeline {
         }
         always {
             echo '🧹 Cleaning workspace...'
-            cleanWs()
+            deleteDir()
         }
     }
 }
