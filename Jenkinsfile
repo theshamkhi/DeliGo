@@ -10,7 +10,7 @@ pipeline {
         SONAR_TOKEN = credentials('sonarcloud-token')
         DOCKER_IMAGE = "deligo-app"
         NETWORK_NAME = "deligo-network"
-        POSTGRES_HOST = "postgres"
+        POSTGRES_HOST = "deligo-postgres"
         POSTGRES_DB = "DeliGo"
         POSTGRES_USER = "postgres"
         POSTGRES_PASSWORD = "123"
@@ -71,7 +71,8 @@ pipeline {
                 echo "🌐 Setting up Docker network..."
                 script {
                     sh """
-                        docker network create ${NETWORK_NAME} 2>/dev/null || true
+                        docker network create ${NETWORK_NAME} 2>/dev/null || echo "Network already exists"
+                        docker network connect ${NETWORK_NAME} ${POSTGRES_HOST} 2>/dev/null || echo "Postgres already connected"
                         echo "✅ Network ready: ${NETWORK_NAME}"
                     """
                 }
@@ -114,18 +115,21 @@ pipeline {
             steps {
                 echo "🏥 Checking application health..."
                 script {
+                    echo "⏳ Waiting 30 seconds for application to start..."
                     sleep(time: 30, unit: 'SECONDS')
 
                     sh '''
-                        for i in {1..10}; do
+                        for i in 1 2 3 4 5 6 7 8 9 10; do
                             if docker exec deligo-app wget --quiet --tries=1 --spider http://localhost:8080/api/v1/actuator/health 2>/dev/null; then
                                 echo "✅ Application is healthy!"
                                 exit 0
                             fi
-                            echo "⏳ Waiting for application to be healthy... ($i/10)"
+                            echo "⏳ Waiting for application to be healthy... (Attempt $i/10)"
                             sleep 10
                         done
-                        echo "❌ Application failed health check"
+                        echo "❌ Application failed health check after 10 attempts"
+                        echo "📋 Checking application logs..."
+                        docker logs deligo-app --tail 50
                         exit 1
                     '''
                 }
