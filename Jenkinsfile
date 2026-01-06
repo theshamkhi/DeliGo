@@ -14,6 +14,27 @@ pipeline {
         POSTGRES_DB = "DeliGo"
         POSTGRES_USER = "postgres"
         POSTGRES_PASSWORD = "123"
+
+        // JWT Configuration
+        JWT_SECRET = credentials('jwt-secret')
+        JWT_EXPIRATION = 86400000
+        JWT_REFRESH_EXPIRATION = 604800000
+
+        // OAuth2 - Google
+        GOOGLE_CLIENT_ID = credentials('google-client-id')
+        GOOGLE_CLIENT_SECRET = credentials('google-client-secret')
+
+        // OAuth2 - Facebook
+        FACEBOOK_CLIENT_ID = credentials('facebook-client-id')
+        FACEBOOK_CLIENT_SECRET = credentials('facebook-client-secret')
+
+        // OAuth2 - Auth0
+        AUTH0_CLIENT_ID = credentials('auth0-client-id')
+        AUTH0_CLIENT_SECRET = credentials('auth0-client-secret')
+        AUTH0_ISSUER_URI = credentials('auth0-issuer-uri')
+
+        // OAuth2 Redirect URI
+        OAUTH2_REDIRECT_URI = http://localhost:4200/oauth2/redirect
     }
 
     stages {
@@ -104,6 +125,17 @@ pipeline {
                             -e SPRING_DATASOURCE_URL=jdbc:postgresql://${POSTGRES_HOST}:5432/${POSTGRES_DB} \
                             -e SPRING_DATASOURCE_USERNAME=${POSTGRES_USER} \
                             -e SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD} \
+                            -e JWT_SECRET=${JWT_SECRET} \
+                            -e JWT_EXPIRATION=${JWT_EXPIRATION} \
+                            -e JWT_REFRESH_EXPIRATION=${JWT_REFRESH_EXPIRATION} \
+                            -e GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID} \
+                            -e GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET} \
+                            -e FACEBOOK_CLIENT_ID=${FACEBOOK_CLIENT_ID} \
+                            -e FACEBOOK_CLIENT_SECRET=${FACEBOOK_CLIENT_SECRET} \
+                            -e AUTH0_CLIENT_ID=${AUTH0_CLIENT_ID} \
+                            -e AUTH0_CLIENT_SECRET=${AUTH0_CLIENT_SECRET} \
+                            -e AUTH0_ISSUER_URI=${AUTH0_ISSUER_URI} \
+                            -e OAUTH2_REDIRECT_URI=${OAUTH2_REDIRECT_URI} \
                             ${DOCKER_IMAGE}:${BUILD_NUMBER}
                     """
                     echo "✅ Container deployed: deligo-app"
