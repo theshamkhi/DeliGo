@@ -34,7 +34,7 @@ pipeline {
         AUTH0_ISSUER_URI = credentials('auth0-issuer-uri')
 
         // OAuth2 Redirect URI
-        OAUTH2_REDIRECT_URI = http://localhost:4200/oauth2/redirect
+        OAUTH2_REDIRECT_URI = "http://localhost:4200/oauth2/redirect"
     }
 
     stages {
