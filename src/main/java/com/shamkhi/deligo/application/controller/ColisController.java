@@ -149,16 +149,28 @@ public class ColisController {
             @Valid @RequestBody UpdateStatutRequest request) {
 
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String username = auth.getName();
+
+        ColisDTO colis = service.getColisById(id);
 
         // Si LIVREUR, vérifier qu'il est assigné au colis
         if (auth.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_LIVREUR"))) {
-            String username = auth.getName();
             User user = userRepository.findByUsername(username)
                     .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
 
-            ColisDTO colis = service.getColisById(id);
-            if (!colis.getLivreurId().equals(user.getLivreurId())) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            if (user.getLivreurId() == null || !user.getLivreurId().equals(colis.getLivreurId())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(null);
+            }
+
+            if (request.getModifiePar() == null || request.getModifiePar().isEmpty()) {
+                request.setModifiePar(user.getUsername());
+            }
+        }
+
+        if (auth.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_MANAGER"))) {
+            if (request.getModifiePar() == null || request.getModifiePar().isEmpty()) {
+                request.setModifiePar(username);
             }
         }
 
