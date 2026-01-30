@@ -32,6 +32,12 @@ public interface ColisRepository extends JpaRepository<Colis, String> {
     @Query("SELECT c.priorite, COUNT(c) FROM Colis c GROUP BY c.priorite")
     List<Object[]> countByPriorite();
 
+    long countByLivreurId(String livreurId);
+    long countByLivreurIdAndStatut(String livreurId, StatutColis statut);
+
+    long countByClientExpediteurId(String clientId);
+    long countByClientExpediteurIdAndStatut(String clientId, StatutColis statut);
+
     // Colis d'un livreur non livrés
     @Query("SELECT c FROM Colis c WHERE c.livreur.id = :livreurId AND c.statut != :statut")
     List<Colis> findByLivreurIdAndStatutNot(
