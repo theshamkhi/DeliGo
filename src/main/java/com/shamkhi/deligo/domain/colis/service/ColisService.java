@@ -244,35 +244,87 @@ public class ColisService {
         return statut == StatutColis.CREE || statut == StatutColis.EN_STOCK;
     }
 
-    // Statistiques
-    public ColisStatisticsDTO getStatistics() {
-        log.info("Calcul des statistiques globales des colis");
+    /**
+     * Récupère les statistiques détaillées des colis par statut
+     * Pour le dashboard frontend
+     */
+    public ColisStatisticsResponse getDetailedStatistics() {
+        log.info("Calcul des statistiques détaillées des colis");
 
-        long totalColis = colisRepository.count();
-
-        // Compter par statut
-        long enCours = colisRepository.countByStatut(StatutColis.EN_TRANSIT);
-        long livres = colisRepository.countByStatut(StatutColis.LIVRE);
-        long enRetard = colisRepository.countOverdue(LocalDateTime.now(),
-                Arrays.asList(StatutColis.LIVRE, StatutColis.ANNULE, StatutColis.RETOURNE));
-
-        ColisStatisticsDTO stats = new ColisStatisticsDTO();
-        stats.setCount(totalColis);
-        stats.setEntityName("Global");
-
-        return stats;
+        return ColisStatisticsResponse.builder()
+                .total(colisRepository.count())
+                .cree(colisRepository.countByStatut(StatutColis.CREE))
+                .collecte(colisRepository.countByStatut(StatutColis.COLLECTE))
+                .enStock(colisRepository.countByStatut(StatutColis.EN_STOCK))
+                .enTransit(colisRepository.countByStatut(StatutColis.EN_TRANSIT))
+                .livre(colisRepository.countByStatut(StatutColis.LIVRE))
+                .annule(colisRepository.countByStatut(StatutColis.ANNULE))
+                .retourne(colisRepository.countByStatut(StatutColis.RETOURNE))
+                .build();
     }
 
-    public List<ColisStatisticsDTO> getStatisticsByLivreur() {
-        log.info("Calcul des statistiques par livreur");
-        List<Object[]> results = colisRepository.countAndSumWeightByLivreur();
-        return mapToStatistics(results);
+    /**
+     * Récupère les statistiques filtrées selon le rôle de l'utilisateur
+     */
+    public ColisStatisticsResponse getStatisticsByUser(String username, List<String> roles) {
+        log.info("Calcul des statistiques pour l'utilisateur: {}", username);
+
+        // Si MANAGER, retourner toutes les stats
+        if (roles.contains("ROLE_MANAGER")) {
+            return getDetailedStatistics();
+        }
+
+        // Si LIVREUR, filtrer par livreur
+        if (roles.contains("ROLE_LIVREUR")) {
+            User user = userRepository.findByUsername(username)
+                    .orElseThrow(() -> new ResourceNotFoundException("Utilisateur non trouvé"));
+
+            if (user.getLivreurId() != null) {
+                return getStatisticsByLivreurId(user.getLivreurId());
+            }
+        }
+
+        // Si CLIENT, filtrer par client
+        if (roles.contains("ROLE_CLIENT")) {
+            User user = userRepository.findByUsername(username)
+                    .orElseThrow(() -> new ResourceNotFoundException("Utilisateur non trouvé"));
+
+            if (user.getClientExpediteurId() != null) {
+                return getStatisticsByClientId(user.getClientExpediteurId());
+            }
+        }
+
+        // Par défaut, retourner des stats vides
+        return ColisStatisticsResponse.builder()
+                .total(0).cree(0).collecte(0).enStock(0)
+                .enTransit(0).livre(0).annule(0).retourne(0)
+                .build();
     }
 
-    public List<ColisStatisticsDTO> getStatisticsByZone() {
-        log.info("Calcul des statistiques par zone");
-        List<Object[]> results = colisRepository.countAndSumWeightByZone();
-        return mapToStatistics(results);
+    public ColisStatisticsResponse getStatisticsByLivreurId(String livreurId) {
+        return ColisStatisticsResponse.builder()
+                .total(colisRepository.countByLivreurId(livreurId))
+                .cree(colisRepository.countByLivreurIdAndStatut(livreurId, StatutColis.CREE))
+                .collecte(colisRepository.countByLivreurIdAndStatut(livreurId, StatutColis.COLLECTE))
+                .enStock(colisRepository.countByLivreurIdAndStatut(livreurId, StatutColis.EN_STOCK))
+                .enTransit(colisRepository.countByLivreurIdAndStatut(livreurId, StatutColis.EN_TRANSIT))
+                .livre(colisRepository.countByLivreurIdAndStatut(livreurId, StatutColis.LIVRE))
+                .annule(colisRepository.countByLivreurIdAndStatut(livreurId, StatutColis.ANNULE))
+                .retourne(colisRepository.countByLivreurIdAndStatut(livreurId, StatutColis.RETOURNE))
+                .build();
+    }
+
+    private ColisStatisticsResponse getStatisticsByClientId(String clientId) {
+        return ColisStatisticsResponse.builder()
+                .total(colisRepository.countByClientExpediteurId(clientId))
+                .cree(colisRepository.countByClientExpediteurIdAndStatut(clientId, StatutColis.CREE))
+                .collecte(colisRepository.countByClientExpediteurIdAndStatut(clientId, StatutColis.COLLECTE))
+                .enStock(colisRepository.countByClientExpediteurIdAndStatut(clientId, StatutColis.EN_STOCK))
+                .enTransit(colisRepository.countByClientExpediteurIdAndStatut(clientId, StatutColis.EN_TRANSIT))
+                .livre(colisRepository.countByClientExpediteurIdAndStatut(clientId, StatutColis.LIVRE))
+                .annule(colisRepository.countByClientExpediteurIdAndStatut(clientId, StatutColis.ANNULE))
+                .retourne(colisRepository.countByClientExpediteurIdAndStatut(clientId, StatutColis.RETOURNE))
+                .build();
     }
 
     public List<ColisDTO> getOverdueColis() {

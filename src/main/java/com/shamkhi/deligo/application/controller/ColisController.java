@@ -1,6 +1,7 @@
 package com.shamkhi.deligo.application.controller;
 
 import com.shamkhi.deligo.domain.colis.dto.*;
+import com.shamkhi.deligo.domain.colis.model.PrioriteColis;
 import com.shamkhi.deligo.domain.colis.service.ColisService;
 import com.shamkhi.deligo.domain.security.model.User;
 import com.shamkhi.deligo.domain.security.repository.UserRepository;
@@ -16,9 +17,13 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/colis")
@@ -169,9 +174,79 @@ public class ColisController {
     }
 
     @GetMapping("/statistiques")
-    @Operation(summary = "Récupère les statistiques des colis")
+    @Operation(summary = "Récupère les statistiques détaillées des colis par statut")
+    @PreAuthorize("hasAnyRole('MANAGER', 'LIVREUR', 'CLIENT')")
+    public ResponseEntity<ColisStatisticsResponse> getStatistics() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String username = auth.getName();
+
+        List<String> roles = auth.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .collect(Collectors.toList());
+
+        ColisStatisticsResponse stats = service.getStatisticsByUser(username, roles);
+        return ResponseEntity.ok(stats);
+    }
+
+    @GetMapping("/statistiques/livreur/{livreurId}")
+    @Operation(summary = "Statistiques d'un livreur spécifique")
     @PreAuthorize("hasRole('MANAGER')")
-    public ResponseEntity<ColisStatisticsDTO> getStatistics() {
-        return ResponseEntity.ok(service.getStatistics());
+    public ResponseEntity<ColisStatisticsResponse> getStatisticsByLivreur(
+            @PathVariable String livreurId) {
+        return ResponseEntity.ok(service.getStatisticsByLivreurId(livreurId));
+    }
+
+    @GetMapping("/en-retard")
+    @Operation(summary = "Liste des colis en retard")
+    @PreAuthorize("hasAnyRole('MANAGER', 'LIVREUR')")
+    public ResponseEntity<List<ColisDTO>> getOverdueColis() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String username = auth.getName();
+
+        // Si LIVREUR, filtrer par ses colis uniquement
+        if (auth.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_LIVREUR"))) {
+            User user = userRepository.findByUsername(username)
+                    .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
+
+            if (user.getLivreurId() != null) {
+                List<ColisDTO> allOverdue = service.getOverdueColis();
+                // Filtrer seulement les colis du livreur
+                return ResponseEntity.ok(
+                        allOverdue.stream()
+                                .filter(c -> user.getLivreurId().equals(c.getLivreurId()))
+                                .collect(Collectors.toList())
+                );
+            }
+        }
+
+        return ResponseEntity.ok(service.getOverdueColis());
+    }
+
+    @GetMapping("/priorite/{priorite}")
+    @Operation(summary = "Liste des colis par priorité")
+    @PreAuthorize("hasAnyRole('MANAGER', 'LIVREUR')")
+    public ResponseEntity<Page<ColisDTO>> getColisByPriorite(
+            @PathVariable PrioriteColis priorite,
+            @PageableDefault(size = 20) Pageable pageable) {
+
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String username = auth.getName();
+
+        // Appliquer les mêmes filtres de rôle que getAll()
+        if (auth.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_LIVREUR"))) {
+            User user = userRepository.findByUsername(username)
+                    .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
+
+            if (user.getLivreurId() != null) {
+                return ResponseEntity.ok(
+                        service.getColisByMultipleCriteria(null, priorite, null, null,
+                                user.getLivreurId(), pageable)
+                );
+            }
+        }
+
+        return ResponseEntity.ok(
+                service.getColisByMultipleCriteria(null, priorite, null, null, null, pageable)
+        );
     }
 }
