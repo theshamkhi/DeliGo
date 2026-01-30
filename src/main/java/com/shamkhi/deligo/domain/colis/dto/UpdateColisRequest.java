@@ -34,4 +34,6 @@ public class UpdateColisRequest {
     private String livreurId;
 
     private String zoneId;
+
+    private String modifiePar;
 }
