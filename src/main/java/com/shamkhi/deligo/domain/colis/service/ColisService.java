@@ -14,6 +14,8 @@ import com.shamkhi.deligo.domain.client.repository.DestinataireRepository;
 import com.shamkhi.deligo.domain.livraison.repository.LivreurRepository;
 import com.shamkhi.deligo.domain.livraison.repository.ZoneRepository;
 import com.shamkhi.deligo.domain.produit.repository.ProduitRepository;
+import com.shamkhi.deligo.domain.security.model.User;
+import com.shamkhi.deligo.domain.security.repository.UserRepository;
 import com.shamkhi.deligo.infrastructure.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -38,6 +40,7 @@ public class ColisService {
     private final HistoriqueLivraisonRepository historiqueRepository;
     private final ColisProduitRepository colisProduitRepository;
     private final ClientExpediteurRepository clientRepository;
+    private final UserRepository userRepository;
     private final DestinataireRepository destinataireRepository;
     private final LivreurRepository livreurRepository;
     private final ZoneRepository zoneRepository;
