@@ -247,10 +247,6 @@ public class ColisService {
         return statut == StatutColis.CREE || statut == StatutColis.EN_STOCK;
     }
 
-    /**
-     * Récupère les statistiques détaillées des colis par statut
-     * Pour le dashboard frontend
-     */
     public ColisStatisticsResponse getDetailedStatistics() {
         log.info("Calcul des statistiques détaillées des colis");
 
@@ -266,9 +262,6 @@ public class ColisService {
                 .build();
     }
 
-    /**
-     * Récupère les statistiques filtrées selon le rôle de l'utilisateur
-     */
     public ColisStatisticsResponse getStatisticsByUser(String username, List<String> roles) {
         log.info("Calcul des statistiques pour l'utilisateur: {}", username);
 

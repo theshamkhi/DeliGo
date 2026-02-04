@@ -23,6 +23,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @RestController
@@ -74,19 +75,24 @@ public class ColisController {
 
         ColisDTO colis = service.getColisById(id);
 
-        // Vérifier les droits d'accès
         if (auth.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_LIVREUR"))) {
             User user = userRepository.findByUsername(username)
                     .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
 
-            if (!colis.getLivreurId().equals(user.getLivreurId())) {
+            String colisLivreurId = colis.getLivreurId();
+            String userLivreurId = user.getLivreurId();
+
+            if (colisLivreurId != null && !Objects.equals(colisLivreurId, userLivreurId)) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
         } else if (auth.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_CLIENT"))) {
             User user = userRepository.findByUsername(username)
                     .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
 
-            if (!colis.getClientExpediteurId().equals(user.getClientExpediteurId())) {
+            String colisClientId = colis.getClientExpediteurId();
+            String userClientId = user.getClientExpediteurId();
+
+            if (colisClientId != null && !Objects.equals(colisClientId, userClientId)) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
         }
