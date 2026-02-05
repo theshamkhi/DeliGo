@@ -66,24 +66,19 @@ spring:
         # Provider Configuration
         provider:
           auth0:
-            issuer-uri: ${AUTH0_ISSUER_URI}
-            # These are automatically derived from issuer-uri:
-            # authorization-uri: ${AUTH0_ISSUER_URI}authorize
-            # token-uri: ${AUTH0_ISSUER_URI}oauth/token
-            # user-info-uri: ${AUTH0_ISSUER_URI}userinfo
-            # jwk-set-uri: ${AUTH0_ISSUER_URI}.well-known/jwks.json
+            issuer-uri: ${AUTH0_ISSUER_URI:https://dev-deligo.us.auth0.com/}
             user-name-attribute: sub
 
 # Application OAuth2 Configuration
 app:
   oauth2:
-    redirect-uri: ${OAUTH2_REDIRECT_URI}
+    redirect-uri: ${OAUTH2_REDIRECT_URI:http://localhost:4200/oauth2/redirect}
 
 # JWT Configuration
 jwt:
-  secret: ${JWT_SECRET}
-  expiration: ${JWT_EXPIRATION}
-  refresh-expiration: ${JWT_REFRESH_EXPIRATION}
+  secret: ${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+  expiration: ${JWT_EXPIRATION:86400000}
+  refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000}
 
 # Logging configuration
 logging:
