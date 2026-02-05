@@ -22,7 +22,6 @@ import java.util.List;
 @RequestMapping("/colis")
 @RequiredArgsConstructor
 @Tag(name = "Colis", description = "Gestion des colis")
-@SecurityRequirement(name = "Bearer Authentication")
 public class ColisController {
 
     private final ColisService service;
