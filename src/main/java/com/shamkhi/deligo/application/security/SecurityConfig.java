@@ -10,7 +10,6 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -27,7 +26,6 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.Arrays;
-import java.util.List;
 
 @Configuration
 @EnableWebSecurity
@@ -47,36 +45,78 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-                        // Endpoints publics
-                        .requestMatchers("/auth/**", "/oauth2/**", "/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                        // ========== PUBLIC ENDPOINTS ==========
+                        .requestMatchers(
+                                "/auth/**",
+                                "/oauth2/**",
+                                "/api-docs/**",
+                                "/swagger-ui/**",
+                                "/swagger-ui.html"
+                        ).permitAll()
 
+                        // ========== ADMIN ENDPOINTS ==========
                         .requestMatchers("/admin/**").hasRole("MANAGER")
 
-                        .requestMatchers(HttpMethod.GET, "/clients/**").hasAnyRole("MANAGER", "CLIENT")
-                        .requestMatchers(HttpMethod.POST, "/clients").hasAnyRole("MANAGER", "CLIENT")
-                        .requestMatchers(HttpMethod.PUT, "/clients/**").hasAnyRole("MANAGER", "CLIENT")
-                        .requestMatchers(HttpMethod.DELETE, "/clients/**").hasRole("MANAGER")
+                        // ========== CLIENTS ENDPOINTS ==========
+                        .requestMatchers(HttpMethod.GET, "/clients/**")
+                        .hasAnyRole("MANAGER", "CLIENT")
+                        .requestMatchers(HttpMethod.POST, "/clients")
+                        .hasAnyRole("MANAGER", "CLIENT")
+                        .requestMatchers(HttpMethod.PUT, "/clients/**")
+                        .hasAnyRole("MANAGER", "CLIENT")
+                        .requestMatchers(HttpMethod.DELETE, "/clients/**")
+                        .hasRole("MANAGER")
 
-                        .requestMatchers(HttpMethod.GET, "/destinataires/**").hasAnyRole("MANAGER", "CLIENT", "LIVREUR")
-                        .requestMatchers(HttpMethod.POST, "/destinataires").hasAnyRole("MANAGER", "CLIENT")
-                        .requestMatchers(HttpMethod.PUT, "/destinataires/**").hasAnyRole("MANAGER", "CLIENT")
-                        .requestMatchers(HttpMethod.DELETE, "/destinataires/**").hasRole("MANAGER")
+                        // ========== DESTINATAIRES ENDPOINTS ==========
+                        .requestMatchers(HttpMethod.GET, "/destinataires/**")
+                        .hasAnyRole("MANAGER", "CLIENT", "LIVREUR")
+                        .requestMatchers(HttpMethod.POST, "/destinataires")
+                        .hasAnyRole("MANAGER", "CLIENT")
+                        .requestMatchers(HttpMethod.PUT, "/destinataires/**")
+                        .hasAnyRole("MANAGER", "CLIENT")
+                        .requestMatchers(HttpMethod.DELETE, "/destinataires/**")
+                        .hasRole("MANAGER")
 
-                        .requestMatchers(HttpMethod.GET, "/colis/**").hasAnyRole("MANAGER", "CLIENT", "LIVREUR")
-                        .requestMatchers(HttpMethod.POST, "/colis").hasAnyRole("MANAGER", "CLIENT")
-                        .requestMatchers(HttpMethod.PUT, "/colis/**").hasAnyRole("MANAGER", "LIVREUR")
-                        .requestMatchers(HttpMethod.PATCH, "/colis/*/statut").hasAnyRole("MANAGER", "LIVREUR")
-                        .requestMatchers(HttpMethod.DELETE, "/colis/**").hasRole("MANAGER")
+                        // ========== COLIS ENDPOINTS ==========
+                        // GET operations - all authenticated users can read
+                        .requestMatchers(HttpMethod.GET, "/colis", "/colis/**")
+                        .hasAnyRole("MANAGER", "CLIENT", "LIVREUR")
 
-                        .requestMatchers("/livreurs/**").hasRole("MANAGER")
+                        // POST - create colis (CLIENT and MANAGER)
+                        .requestMatchers(HttpMethod.POST, "/colis")
+                        .hasAnyRole("MANAGER", "CLIENT")
 
-                        .requestMatchers("/zones/**").hasRole("MANAGER")
+                        // PUT - full update (MANAGER only)
+                        .requestMatchers(HttpMethod.PUT, "/colis/**")
+                        .hasRole("MANAGER")
 
-                        .requestMatchers(HttpMethod.GET, "/produits/**").hasAnyRole("MANAGER", "CLIENT")
-                        .requestMatchers(HttpMethod.POST, "/produits").hasRole("MANAGER")
-                        .requestMatchers(HttpMethod.PUT, "/produits/**").hasRole("MANAGER")
-                        .requestMatchers(HttpMethod.DELETE, "/produits/**").hasRole("MANAGER")
+                        // PATCH - status updates (MANAGER and LIVREUR)
+                        .requestMatchers(HttpMethod.PATCH, "/colis/*/statut")
+                        .hasAnyRole("MANAGER", "LIVREUR")
 
+                        // DELETE (MANAGER only)
+                        .requestMatchers(HttpMethod.DELETE, "/colis/**")
+                        .hasRole("MANAGER")
+
+                        // ========== LIVREURS ENDPOINTS ==========
+                        .requestMatchers("/livreurs/**")
+                        .hasRole("MANAGER")
+
+                        // ========== ZONES ENDPOINTS ==========
+                        .requestMatchers("/zones/**")
+                        .hasRole("MANAGER")
+
+                        // ========== PRODUITS ENDPOINTS ==========
+                        .requestMatchers(HttpMethod.GET, "/produits/**")
+                        .hasAnyRole("MANAGER", "CLIENT")
+                        .requestMatchers(HttpMethod.POST, "/produits")
+                        .hasRole("MANAGER")
+                        .requestMatchers(HttpMethod.PUT, "/produits/**")
+                        .hasRole("MANAGER")
+                        .requestMatchers(HttpMethod.DELETE, "/produits/**")
+                        .hasRole("MANAGER")
+
+                        // ========== ALL OTHER REQUESTS ==========
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session
@@ -105,32 +145,22 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        // Allow specific origins
         configuration.setAllowedOrigins(Arrays.asList(
                 "http://localhost:3000",    // React
                 "http://localhost:4200",    // Angular
                 "http://localhost:8080"     // Local development
         ));
 
-        // Allow all HTTP methods
         configuration.setAllowedMethods(Arrays.asList(
                 "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"
         ));
 
-        // Allow all headers
         configuration.setAllowedHeaders(Arrays.asList("*"));
-
-        // Expose Authorization header
         configuration.setExposedHeaders(Arrays.asList("Authorization"));
-
-        // Allow credentials (cookies, authorization headers)
         configuration.setAllowCredentials(true);
-
-        // Cache preflight response for 1 hour
         configuration.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        // Apply CORS config to all endpoints
         source.registerCorsConfiguration("/**", configuration);
 
         return source;
