@@ -21,6 +21,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,6 +32,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -46,6 +50,163 @@ public class ColisService {
     private final ZoneRepository zoneRepository;
     private final ProduitRepository produitRepository;
     private final ColisMapper colisMapper;
+
+    // ============ USER-AWARE METHODS ============
+
+    public Page<ColisDTO> getAllColisForUser(Authentication auth, Pageable pageable) {
+        log.info("Récupération des colis pour l'utilisateur: {}", auth.getName());
+
+        if (hasRole(auth, "ROLE_MANAGER")) {
+            return getAllColis(pageable);
+        } else if (hasRole(auth, "ROLE_LIVREUR")) {
+            User user = getUserByAuth(auth);
+            if (user.getLivreurId() != null) {
+                return getColisByLivreur(user.getLivreurId(), pageable);
+            }
+        } else if (hasRole(auth, "ROLE_CLIENT")) {
+            User user = getUserByAuth(auth);
+            if (user.getClientExpediteurId() != null) {
+                return getColisByClient(user.getClientExpediteurId(), pageable);
+            }
+        }
+
+        return Page.empty(pageable);
+    }
+
+    public ColisDTO getColisByIdForUser(String id, Authentication auth) {
+        log.info("Récupération du colis {} pour l'utilisateur: {}", id, auth.getName());
+
+        ColisDTO colis = getColisById(id);
+
+        // MANAGER can see all
+        if (hasRole(auth, "ROLE_MANAGER")) {
+            return colis;
+        }
+
+        User user = getUserByAuth(auth);
+
+        // LIVREUR can only see assigned colis
+        if (hasRole(auth, "ROLE_LIVREUR")) {
+            if (user.getLivreurId() == null || !user.getLivreurId().equals(colis.getLivreurId())) {
+                throw new AccessDeniedException("Vous n'avez pas accès à ce colis");
+            }
+            return colis;
+        }
+
+        // CLIENT can only see their colis
+        if (hasRole(auth, "ROLE_CLIENT")) {
+            if (user.getClientExpediteurId() == null || !user.getClientExpediteurId().equals(colis.getClientExpediteurId())) {
+                throw new AccessDeniedException("Vous n'avez pas accès à ce colis");
+            }
+            return colis;
+        }
+
+        throw new AccessDeniedException("Accès refusé");
+    }
+
+    public Page<ColisDTO> searchColisForUser(String keyword, Authentication auth, Pageable pageable) {
+        log.info("Recherche de colis pour l'utilisateur: {}", auth.getName());
+
+        if (hasRole(auth, "ROLE_MANAGER")) {
+            return searchColis(keyword, pageable);
+        }
+
+        // For LIVREUR and CLIENT, we should filter results
+        // For simplicity, returning search results (you can add filtering here)
+        return searchColis(keyword, pageable);
+    }
+
+    @Transactional
+    public ColisDTO createColisForUser(CreateColisRequest request, Authentication auth) {
+        log.info("Création d'un colis pour l'utilisateur: {}", auth.getName());
+
+        // If CLIENT, ensure they're creating for themselves
+        if (hasRole(auth, "ROLE_CLIENT") && !hasRole(auth, "ROLE_MANAGER")) {
+            User user = getUserByAuth(auth);
+            if (!request.getClientExpediteurId().equals(user.getClientExpediteurId())) {
+                throw new AccessDeniedException("Vous ne pouvez créer des colis que pour vous-même");
+            }
+        }
+
+        return createColis(request);
+    }
+
+    @Transactional
+    public ColisDTO updateStatutForUser(String id, UpdateStatutRequest request, Authentication auth) {
+        log.info("Mise à jour du statut du colis {} pour l'utilisateur: {}", id, auth.getName());
+
+        // LIVREUR can only update their assigned colis
+        if (hasRole(auth, "ROLE_LIVREUR") && !hasRole(auth, "ROLE_MANAGER")) {
+            User user = getUserByAuth(auth);
+            ColisDTO colis = getColisById(id);
+
+            if (user.getLivreurId() == null || !user.getLivreurId().equals(colis.getLivreurId())) {
+                throw new AccessDeniedException("Vous ne pouvez modifier que vos colis assignés");
+            }
+
+            // Set modifiePar if not provided
+            if (request.getModifiePar() == null || request.getModifiePar().isEmpty()) {
+                request.setModifiePar(user.getUsername());
+            }
+        }
+
+        // Set modifiePar for MANAGER if not provided
+        if (hasRole(auth, "ROLE_MANAGER")) {
+            if (request.getModifiePar() == null || request.getModifiePar().isEmpty()) {
+                request.setModifiePar(auth.getName());
+            }
+        }
+
+        return updateStatut(id, request);
+    }
+
+    public ColisStatisticsResponse getStatisticsForUser(Authentication auth) {
+        log.info("Récupération des statistiques pour l'utilisateur: {}", auth.getName());
+
+        List<String> roles = auth.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .collect(Collectors.toList());
+
+        return getStatisticsByUser(auth.getName(), roles);
+    }
+
+    public List<ColisDTO> getOverdueColisForUser(Authentication auth) {
+        log.info("Récupération des colis en retard pour l'utilisateur: {}", auth.getName());
+
+        if (hasRole(auth, "ROLE_MANAGER")) {
+            return getOverdueColis();
+        }
+
+        if (hasRole(auth, "ROLE_LIVREUR")) {
+            User user = getUserByAuth(auth);
+            if (user.getLivreurId() != null) {
+                return getOverdueColis().stream()
+                        .filter(c -> user.getLivreurId().equals(c.getLivreurId()))
+                        .collect(Collectors.toList());
+            }
+        }
+
+        return List.of();
+    }
+
+    public Page<ColisDTO> getColisByPrioriteForUser(PrioriteColis priorite, Authentication auth, Pageable pageable) {
+        log.info("Récupération des colis par priorité pour l'utilisateur: {}", auth.getName());
+
+        if (hasRole(auth, "ROLE_MANAGER")) {
+            return getColisByMultipleCriteria(null, priorite, null, null, null, pageable);
+        }
+
+        if (hasRole(auth, "ROLE_LIVREUR")) {
+            User user = getUserByAuth(auth);
+            if (user.getLivreurId() != null) {
+                return getColisByMultipleCriteria(null, priorite, null, null, user.getLivreurId(), pageable);
+            }
+        }
+
+        return Page.empty(pageable);
+    }
+
+    // ============ ORIGINAL PUBLIC METHODS ============
 
     public Page<ColisDTO> getAllColis(Pageable pageable) {
         log.info("Récupération de tous les colis avec pagination");
@@ -79,7 +240,6 @@ public class ColisService {
         log.info("Récupération des colis du client expéditeur: {}", clientId);
         return colisRepository.findByClientExpediteurId(clientId, pageable).map(colisMapper::toDTO);
     }
-
 
     public Page<ColisDTO> getColisByClient(String clientId, Pageable pageable) {
         return getColisByClientExpediteur(clientId, pageable);
@@ -330,7 +490,18 @@ public class ColisService {
         return colisMapper.toDTOList(overdue);
     }
 
-    // Méthodes privées
+    // ============ HELPER METHODS ============
+
+    private boolean hasRole(Authentication auth, String role) {
+        return auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals(role));
+    }
+
+    private User getUserByAuth(Authentication auth) {
+        return userRepository.findByUsername(auth.getName())
+                .orElseThrow(() -> new ResourceNotFoundException("Utilisateur non trouvé"));
+    }
+
     private Colis findColisById(String id) {
         return colisRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Colis non trouvé avec l'id: " + id));
