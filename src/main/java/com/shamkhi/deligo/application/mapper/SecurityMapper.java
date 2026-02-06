@@ -46,17 +46,23 @@ public interface SecurityMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "password", ignore = true)
     @Mapping(target = "roles", ignore = true)
+    @Mapping(target = "clientExpediteur", ignore = true)
+    @Mapping(target = "livreur", ignore = true)
     @Mapping(target = "dateCreation", ignore = true)
     @Mapping(target = "dateModification", ignore = true)
     User toUserEntity(UserDTO dto);
 
     @Mapping(target = "roles", source = "roles", qualifiedByName = "rolesToNames")
     @Mapping(target = "permissions", source = "roles", qualifiedByName = "rolesToPermissionNames")
+    @Mapping(target = "clientExpediteurId", expression = "java(entity.getClientExpediteur() != null ? entity.getClientExpediteur().getId() : null)")
+    @Mapping(target = "livreurId", expression = "java(entity.getLivreur() != null ? entity.getLivreur().getId() : null)")
     UserDTO toUserDTO(User entity);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @Mapping(target = "password", ignore = true)
     @Mapping(target = "roles", ignore = true)
+    @Mapping(target = "clientExpediteur", ignore = true)
+    @Mapping(target = "livreur", ignore = true)
     @Mapping(target = "dateCreation", ignore = true)
     @Mapping(target = "dateModification", ignore = true)
     void updateUserEntity(UserDTO dto, @MappingTarget User entity);

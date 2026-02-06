@@ -1,6 +1,10 @@
 package com.shamkhi.deligo.domain.security.service;
 
 import com.shamkhi.deligo.application.mapper.SecurityMapper;
+import com.shamkhi.deligo.domain.client.model.ClientExpediteur;
+import com.shamkhi.deligo.domain.client.repository.ClientExpediteurRepository;
+import com.shamkhi.deligo.domain.livraison.model.Livreur;
+import com.shamkhi.deligo.domain.livraison.repository.LivreurRepository;
 import com.shamkhi.deligo.domain.security.dto.*;
 import com.shamkhi.deligo.domain.security.model.Role;
 import com.shamkhi.deligo.domain.security.model.User;
@@ -32,6 +36,8 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
+    private final ClientExpediteurRepository clientExpediteurRepository;
+    private final LivreurRepository livreurRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
@@ -133,10 +139,20 @@ public class UserService {
                 .prenom(request.getPrenom())
                 .telephone(request.getTelephone())
                 .actif(true)
-                .clientExpediteurId(request.getClientExpediteurId())
-                .livreurId(request.getLivreurId())
                 .roles(new HashSet<>())
                 .build();
+
+        if (request.getClientExpediteurId() != null) {
+            ClientExpediteur clientExpediteur = clientExpediteurRepository.findById(request.getClientExpediteurId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Client expéditeur non trouvé"));
+            user.setClientExpediteur(clientExpediteur);
+        }
+
+        if (request.getLivreurId() != null) {
+            Livreur livreur = livreurRepository.findById(request.getLivreurId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Livreur non trouvé"));
+            user.setLivreur(livreur);
+        }
 
         // Assigner les rôles
         if (request.getRoles() != null && !request.getRoles().isEmpty()) {
@@ -205,8 +221,22 @@ public class UserService {
         user.setNom(request.getNom());
         user.setPrenom(request.getPrenom());
         user.setTelephone(request.getTelephone());
-        user.setClientExpediteurId(request.getClientExpediteurId());
-        user.setLivreurId(request.getLivreurId());
+
+        if (request.getClientExpediteurId() != null) {
+            ClientExpediteur clientExpediteur = clientExpediteurRepository.findById(request.getClientExpediteurId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Client expéditeur non trouvé"));
+            user.setClientExpediteur(clientExpediteur);
+        } else {
+            user.setClientExpediteur(null);
+        }
+
+        if (request.getLivreurId() != null) {
+            Livreur livreur = livreurRepository.findById(request.getLivreurId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Livreur non trouvé"));
+            user.setLivreur(livreur);
+        } else {
+            user.setLivreur(null);
+        }
 
         if (request.getPassword() != null && !request.getPassword().isEmpty()) {
             user.setPassword(passwordEncoder.encode(request.getPassword()));

@@ -60,13 +60,13 @@ public class ColisService {
             return getAllColis(pageable);
         } else if (hasRole(auth, "ROLE_LIVREUR")) {
             User user = getUserByAuth(auth);
-            if (user.getLivreurId() != null) {
-                return getColisByLivreur(user.getLivreurId(), pageable);
+            if (user.getLivreur() != null) {
+                return getColisByLivreur(user.getLivreur().getId(), pageable);
             }
         } else if (hasRole(auth, "ROLE_CLIENT")) {
             User user = getUserByAuth(auth);
-            if (user.getClientExpediteurId() != null) {
-                return getColisByClient(user.getClientExpediteurId(), pageable);
+            if (user.getClientExpediteur() != null) {
+                return getColisByClient(user.getClientExpediteur().getId(), pageable);
             }
         }
 
@@ -87,7 +87,8 @@ public class ColisService {
 
         // LIVREUR can only see assigned colis
         if (hasRole(auth, "ROLE_LIVREUR")) {
-            if (user.getLivreurId() == null || !user.getLivreurId().equals(colis.getLivreurId())) {
+            String userLivreurId = user.getLivreur() != null ? user.getLivreur().getId() : null;
+            if (userLivreurId == null || !userLivreurId.equals(colis.getLivreurId())) {
                 throw new AccessDeniedException("Vous n'avez pas accès à ce colis");
             }
             return colis;
@@ -95,7 +96,8 @@ public class ColisService {
 
         // CLIENT can only see their colis
         if (hasRole(auth, "ROLE_CLIENT")) {
-            if (user.getClientExpediteurId() == null || !user.getClientExpediteurId().equals(colis.getClientExpediteurId())) {
+            String userClientId = user.getClientExpediteur() != null ? user.getClientExpediteur().getId() : null;
+            if (userClientId == null || !userClientId.equals(colis.getClientExpediteurId())) {
                 throw new AccessDeniedException("Vous n'avez pas accès à ce colis");
             }
             return colis;
@@ -111,8 +113,6 @@ public class ColisService {
             return searchColis(keyword, pageable);
         }
 
-        // For LIVREUR and CLIENT, we should filter results
-        // For simplicity, returning search results (you can add filtering here)
         return searchColis(keyword, pageable);
     }
 
@@ -123,7 +123,8 @@ public class ColisService {
         // If CLIENT, ensure they're creating for themselves
         if (hasRole(auth, "ROLE_CLIENT") && !hasRole(auth, "ROLE_MANAGER")) {
             User user = getUserByAuth(auth);
-            if (!request.getClientExpediteurId().equals(user.getClientExpediteurId())) {
+            String userClientId = user.getClientExpediteur() != null ? user.getClientExpediteur().getId() : null;
+            if (userClientId == null || !request.getClientExpediteurId().equals(userClientId)) {
                 throw new AccessDeniedException("Vous ne pouvez créer des colis que pour vous-même");
             }
         }
@@ -140,7 +141,8 @@ public class ColisService {
             User user = getUserByAuth(auth);
             ColisDTO colis = getColisById(id);
 
-            if (user.getLivreurId() == null || !user.getLivreurId().equals(colis.getLivreurId())) {
+            String userLivreurId = user.getLivreur() != null ? user.getLivreur().getId() : null;
+            if (userLivreurId == null || !userLivreurId.equals(colis.getLivreurId())) {
                 throw new AccessDeniedException("Vous ne pouvez modifier que vos colis assignés");
             }
 
@@ -179,9 +181,10 @@ public class ColisService {
 
         if (hasRole(auth, "ROLE_LIVREUR")) {
             User user = getUserByAuth(auth);
-            if (user.getLivreurId() != null) {
+            if (user.getLivreur() != null) {
+                String userLivreurId = user.getLivreur().getId();
                 return getOverdueColis().stream()
-                        .filter(c -> user.getLivreurId().equals(c.getLivreurId()))
+                        .filter(c -> userLivreurId.equals(c.getLivreurId()))
                         .collect(Collectors.toList());
             }
         }
@@ -198,8 +201,8 @@ public class ColisService {
 
         if (hasRole(auth, "ROLE_LIVREUR")) {
             User user = getUserByAuth(auth);
-            if (user.getLivreurId() != null) {
-                return getColisByMultipleCriteria(null, priorite, null, null, user.getLivreurId(), pageable);
+            if (user.getLivreur() != null) {
+                return getColisByMultipleCriteria(null, priorite, null, null, user.getLivreur().getId(), pageable);
             }
         }
 
@@ -296,7 +299,6 @@ public class ColisService {
 
         colisMapper.updateEntity(request, colis);
 
-        // Gérer les relations si modifiées
         if (request.getLivreurId() != null) {
             colis.setLivreur(livreurRepository.findById(request.getLivreurId())
                     .orElseThrow(() -> new ResourceNotFoundException("Livreur non trouvé")));
@@ -435,8 +437,8 @@ public class ColisService {
             User user = userRepository.findByUsername(username)
                     .orElseThrow(() -> new ResourceNotFoundException("Utilisateur non trouvé"));
 
-            if (user.getLivreurId() != null) {
-                return getStatisticsByLivreurId(user.getLivreurId());
+            if (user.getLivreur() != null) {
+                return getStatisticsByLivreurId(user.getLivreur().getId());
             }
         }
 
@@ -445,8 +447,8 @@ public class ColisService {
             User user = userRepository.findByUsername(username)
                     .orElseThrow(() -> new ResourceNotFoundException("Utilisateur non trouvé"));
 
-            if (user.getClientExpediteurId() != null) {
-                return getStatisticsByClientId(user.getClientExpediteurId());
+            if (user.getClientExpediteur() != null) {
+                return getStatisticsByClientId(user.getClientExpediteur().getId());
             }
         }
 
