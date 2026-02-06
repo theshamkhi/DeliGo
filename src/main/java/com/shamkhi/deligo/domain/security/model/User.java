@@ -1,5 +1,7 @@
 package com.shamkhi.deligo.domain.security.model;
 
+import com.shamkhi.deligo.domain.client.model.ClientExpediteur;
+import com.shamkhi.deligo.domain.livraison.model.Livreur;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -71,13 +73,16 @@ public class User {
             joinColumns = @JoinColumn(name = "user_id"),
             inverseJoinColumns = @JoinColumn(name = "role_id")
     )
+    @Builder.Default
     private Set<Role> roles = new HashSet<>();
 
-    @Column(name = "client_expediteur_id", length = 36)
-    private String clientExpediteurId;
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "client_expediteur_id")
+    private ClientExpediteur clientExpediteur;
 
-    @Column(name = "livreur_id", length = 36)
-    private String livreurId;
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "livreur_id")
+    private Livreur livreur;
 
     @Column(name = "date_creation", nullable = false, updatable = false)
     private LocalDateTime dateCreation;
