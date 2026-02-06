@@ -15,7 +15,7 @@ public interface LivreurRepository extends JpaRepository<Livreur, String> {
 
     List<Livreur> findByActif(Boolean actif);
 
-    List<Livreur> findByZoneAssigneeId(String zoneId);
+    boolean existsByTelephone(String telephone);
 
     @Query("SELECT l FROM Livreur l WHERE " +
             "LOWER(l.nom) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
@@ -23,5 +23,5 @@ public interface LivreurRepository extends JpaRepository<Livreur, String> {
             "LOWER(l.telephone) LIKE LOWER(CONCAT('%', :keyword, '%'))")
     Page<Livreur> searchByKeyword(@Param("keyword") String keyword, Pageable pageable);
 
-    boolean existsByTelephone(String telephone);
+    List<Livreur> findByZoneAssigneeId(String id);
 }

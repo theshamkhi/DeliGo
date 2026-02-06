@@ -119,7 +119,10 @@ public class UserService {
 
     @Transactional
     public UserDTO register(RegisterRequest request) {
-        log.info("Création d'un nouvel utilisateur: {}", request.getUsername());
+        log.info("Création d'un utilisateur générique (ADMIN, GESTIONNAIRE, etc.): {}", request.getUsername());
+
+        // NOTE: Les utilisateurs LIVREUR et CLIENT doivent être créés via
+        // LivreurService et ClientExpediteurService respectivement
 
         // Vérifier l'unicité du username et email
         if (userRepository.existsByUsername(request.getUsername())) {
@@ -142,30 +145,24 @@ public class UserService {
                 .roles(new HashSet<>())
                 .build();
 
-        if (request.getClientExpediteurId() != null) {
-            ClientExpediteur clientExpediteur = clientExpediteurRepository.findById(request.getClientExpediteurId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Client expéditeur non trouvé"));
-            user.setClientExpediteur(clientExpediteur);
-        }
-
-        if (request.getLivreurId() != null) {
-            Livreur livreur = livreurRepository.findById(request.getLivreurId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Livreur non trouvé"));
-            user.setLivreur(livreur);
-        }
-
-        // Assigner les rôles
+        // Assigner les rôles (typiquement ADMIN, GESTIONNAIRE, etc.)
         if (request.getRoles() != null && !request.getRoles().isEmpty()) {
+            // Vérifier qu'on ne crée pas un LIVREUR ou CLIENT via cette méthode
+            if (request.getRoles().contains("ROLE_LIVREUR")) {
+                throw new IllegalArgumentException("Utilisez LivreurService pour créer un livreur");
+            }
+            if (request.getRoles().contains("ROLE_CLIENT")) {
+                throw new IllegalArgumentException("Utilisez ClientExpediteurService pour créer un client");
+            }
+
             Set<Role> roles = request.getRoles().stream()
                     .map(roleName -> roleRepository.findByName(roleName)
                             .orElseThrow(() -> new ResourceNotFoundException("Rôle non trouvé: " + roleName)))
                     .collect(Collectors.toSet());
             user.setRoles(roles);
         } else {
-            // Par défaut, assigner le rôle CLIENT
-            Role clientRole = roleRepository.findByName("ROLE_CLIENT")
-                    .orElseThrow(() -> new ResourceNotFoundException("Rôle CLIENT non trouvé"));
-            user.getRoles().add(clientRole);
+            // Par défaut, assigner un rôle basique ou lever une exception
+            throw new IllegalArgumentException("Au moins un rôle doit être spécifié");
         }
 
         user = userRepository.save(user);
@@ -205,6 +202,14 @@ public class UserService {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Utilisateur non trouvé"));
 
+        // Ne pas permettre la mise à jour d'utilisateurs liés à Livreur ou ClientExpediteur via cette méthode
+        if (user.getLivreur() != null) {
+            throw new IllegalArgumentException("Utilisez LivreurService pour mettre à jour un livreur");
+        }
+        if (user.getClientExpediteur() != null) {
+            throw new IllegalArgumentException("Utilisez ClientExpediteurService pour mettre à jour un client");
+        }
+
         // Vérifier l'unicité du username et email
         if (!user.getUsername().equals(request.getUsername()) &&
                 userRepository.existsByUsername(request.getUsername())) {
@@ -221,22 +226,6 @@ public class UserService {
         user.setNom(request.getNom());
         user.setPrenom(request.getPrenom());
         user.setTelephone(request.getTelephone());
-
-        if (request.getClientExpediteurId() != null) {
-            ClientExpediteur clientExpediteur = clientExpediteurRepository.findById(request.getClientExpediteurId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Client expéditeur non trouvé"));
-            user.setClientExpediteur(clientExpediteur);
-        } else {
-            user.setClientExpediteur(null);
-        }
-
-        if (request.getLivreurId() != null) {
-            Livreur livreur = livreurRepository.findById(request.getLivreurId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Livreur non trouvé"));
-            user.setLivreur(livreur);
-        } else {
-            user.setLivreur(null);
-        }
 
         if (request.getPassword() != null && !request.getPassword().isEmpty()) {
             user.setPassword(passwordEncoder.encode(request.getPassword()));
@@ -259,6 +248,15 @@ public class UserService {
         log.info("Suppression de l'utilisateur: {}", id);
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Utilisateur non trouvé"));
+
+        // Ne pas permettre la suppression d'utilisateurs liés à Livreur ou ClientExpediteur
+        if (user.getLivreur() != null) {
+            throw new IllegalArgumentException("Utilisez LivreurService pour supprimer un livreur");
+        }
+        if (user.getClientExpediteur() != null) {
+            throw new IllegalArgumentException("Utilisez ClientExpediteurService pour supprimer un client");
+        }
+
         userRepository.delete(user);
     }
 
