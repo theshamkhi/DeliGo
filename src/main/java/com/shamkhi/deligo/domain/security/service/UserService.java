@@ -4,7 +4,9 @@ import com.shamkhi.deligo.application.mapper.SecurityMapper;
 import com.shamkhi.deligo.domain.client.model.ClientExpediteur;
 import com.shamkhi.deligo.domain.client.repository.ClientExpediteurRepository;
 import com.shamkhi.deligo.domain.livraison.model.Livreur;
+import com.shamkhi.deligo.domain.livraison.model.Zone;
 import com.shamkhi.deligo.domain.livraison.repository.LivreurRepository;
+import com.shamkhi.deligo.domain.livraison.repository.ZoneRepository;
 import com.shamkhi.deligo.domain.security.dto.*;
 import com.shamkhi.deligo.domain.security.model.Role;
 import com.shamkhi.deligo.domain.security.model.User;
@@ -38,32 +40,31 @@ public class UserService {
     private final RoleRepository roleRepository;
     private final ClientExpediteurRepository clientExpediteurRepository;
     private final LivreurRepository livreurRepository;
+    private final ZoneRepository zoneRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
     private final SecurityMapper securityMapper;
     private final UserDetailsService userDetailsService;
 
+    // ========== Authentication Methods ==========
+
     @Transactional
     public LoginResponse login(LoginRequest request) {
         log.info("Tentative de connexion pour l'utilisateur: {}", request.getUsername());
 
-        // Authentifier l'utilisateur
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
         );
 
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
 
-        // Générer les tokens JWT
         String accessToken = jwtService.generateToken(userDetails);
         String refreshToken = jwtService.generateRefreshToken(userDetails);
 
-        // Récupérer les informations complètes de l'utilisateur
         User user = userRepository.findByUsername(request.getUsername())
                 .orElseThrow(() -> new ResourceNotFoundException("Utilisateur non trouvé"));
 
-        // Extraire les rôles et permissions
         Set<String> roles = user.getRoles().stream()
                 .map(Role::getName)
                 .collect(Collectors.toSet());
@@ -93,18 +94,13 @@ public class UserService {
     public TokenRefreshResponse refreshToken(String refreshToken) {
         log.info("Tentative de rafraîchissement du token");
 
-        // Valider le refresh token
         if (!jwtService.validateRefreshToken(refreshToken)) {
             throw new IllegalArgumentException("Refresh token invalide ou expiré");
         }
 
-        // Extraire le username du refresh token
         String username = jwtService.extractUsername(refreshToken);
-
-        // Charger les détails de l'utilisateur
         UserDetails userDetails = userDetailsService.loadUserByUsername(username);
 
-        // Générer de nouveaux tokens
         String newAccessToken = jwtService.generateToken(userDetails);
         String newRefreshToken = jwtService.generateRefreshToken(userDetails);
 
@@ -117,59 +113,51 @@ public class UserService {
                 .build();
     }
 
+    // ========== Unified Registration (All User Types) ==========
+
+    /**
+     * Unified registration endpoint for all user types.
+     * Automatically creates linked business entities (Livreur/Client) based on roles.
+     *
+     * @param request Registration request with user credentials and optional business data
+     * @return UserDTO with all linked entity IDs
+     */
     @Transactional
     public UserDTO register(RegisterRequest request) {
-        log.info("Création d'un utilisateur générique (ADMIN, GESTIONNAIRE, etc.): {}", request.getUsername());
+        log.info("Création d'un utilisateur: {} avec rôles: {}",
+                request.getUsername(), request.getRoles());
 
-        // NOTE: Les utilisateurs LIVREUR et CLIENT doivent être créés via
-        // LivreurService et ClientExpediteurService respectivement
+        // Validate unique constraints
+        validateUniqueConstraints(request);
 
-        // Vérifier l'unicité du username et email
-        if (userRepository.existsByUsername(request.getUsername())) {
-            throw new DuplicateResourceException("Ce nom d'utilisateur existe déjà");
+        // Validate business data requirements
+        validateBusinessDataRequirements(request);
+
+        // Create User entity
+        User user = createUserEntity(request);
+
+        // Auto-create and link business entities based on roles
+        if (hasRole(request, "ROLE_LIVREUR")) {
+            Livreur livreur = createLivreurEntity(request);
+            livreur = livreurRepository.save(livreur);
+            user.setLivreur(livreur);
+            log.info("Livreur créé et lié: {}", livreur.getId());
         }
 
-        if (userRepository.existsByEmail(request.getEmail())) {
-            throw new DuplicateResourceException("Cet email existe déjà");
-        }
-
-        // Créer l'utilisateur
-        User user = User.builder()
-                .username(request.getUsername())
-                .email(request.getEmail())
-                .password(passwordEncoder.encode(request.getPassword()))
-                .nom(request.getNom())
-                .prenom(request.getPrenom())
-                .telephone(request.getTelephone())
-                .actif(true)
-                .roles(new HashSet<>())
-                .build();
-
-        // Assigner les rôles (typiquement ADMIN, GESTIONNAIRE, etc.)
-        if (request.getRoles() != null && !request.getRoles().isEmpty()) {
-            // Vérifier qu'on ne crée pas un LIVREUR ou CLIENT via cette méthode
-            if (request.getRoles().contains("ROLE_LIVREUR")) {
-                throw new IllegalArgumentException("Utilisez LivreurService pour créer un livreur");
-            }
-            if (request.getRoles().contains("ROLE_CLIENT")) {
-                throw new IllegalArgumentException("Utilisez ClientExpediteurService pour créer un client");
-            }
-
-            Set<Role> roles = request.getRoles().stream()
-                    .map(roleName -> roleRepository.findByName(roleName)
-                            .orElseThrow(() -> new ResourceNotFoundException("Rôle non trouvé: " + roleName)))
-                    .collect(Collectors.toSet());
-            user.setRoles(roles);
-        } else {
-            // Par défaut, assigner un rôle basique ou lever une exception
-            throw new IllegalArgumentException("Au moins un rôle doit être spécifié");
+        if (hasRole(request, "ROLE_CLIENT")) {
+            ClientExpediteur client = createClientEntity(request);
+            client = clientExpediteurRepository.save(client);
+            user.setClientExpediteur(client);
+            log.info("Client créé et lié: {}", client.getId());
         }
 
         user = userRepository.save(user);
-        log.info("Utilisateur créé avec succès: {}", user.getUsername());
+        log.info("Utilisateur créé avec succès: {}", user.getId());
 
         return securityMapper.toUserDTO(user);
     }
+
+    // ========== User Management Methods ==========
 
     public UserDTO getUserById(String id) {
         User user = userRepository.findById(id)
@@ -202,15 +190,7 @@ public class UserService {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Utilisateur non trouvé"));
 
-        // Ne pas permettre la mise à jour d'utilisateurs liés à Livreur ou ClientExpediteur via cette méthode
-        if (user.getLivreur() != null) {
-            throw new IllegalArgumentException("Utilisez LivreurService pour mettre à jour un livreur");
-        }
-        if (user.getClientExpediteur() != null) {
-            throw new IllegalArgumentException("Utilisez ClientExpediteurService pour mettre à jour un client");
-        }
-
-        // Vérifier l'unicité du username et email
+        // Validate unique constraints (excluding current user)
         if (!user.getUsername().equals(request.getUsername()) &&
                 userRepository.existsByUsername(request.getUsername())) {
             throw new DuplicateResourceException("Ce nom d'utilisateur existe déjà");
@@ -221,6 +201,7 @@ public class UserService {
             throw new DuplicateResourceException("Cet email existe déjà");
         }
 
+        // Update user basic info
         user.setUsername(request.getUsername());
         user.setEmail(request.getEmail());
         user.setNom(request.getNom());
@@ -239,6 +220,15 @@ public class UserService {
             user.setRoles(roles);
         }
 
+        // Update linked entities if they exist
+        if (user.getLivreur() != null && request.getLivreurData() != null) {
+            updateLivreurEntity(user.getLivreur(), request);
+        }
+
+        if (user.getClientExpediteur() != null && request.getClientData() != null) {
+            updateClientEntity(user.getClientExpediteur(), request);
+        }
+
         user = userRepository.save(user);
         return securityMapper.toUserDTO(user);
     }
@@ -249,14 +239,7 @@ public class UserService {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Utilisateur non trouvé"));
 
-        // Ne pas permettre la suppression d'utilisateurs liés à Livreur ou ClientExpediteur
-        if (user.getLivreur() != null) {
-            throw new IllegalArgumentException("Utilisez LivreurService pour supprimer un livreur");
-        }
-        if (user.getClientExpediteur() != null) {
-            throw new IllegalArgumentException("Utilisez ClientExpediteurService pour supprimer un client");
-        }
-
+        // Cascade deletion will handle linked Livreur/Client
         userRepository.delete(user);
     }
 
@@ -265,6 +248,12 @@ public class UserService {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Utilisateur non trouvé"));
         user.setActif(true);
+
+        // Also activate linked entities
+        if (user.getLivreur() != null) {
+            user.getLivreur().setActif(true);
+        }
+
         userRepository.save(user);
     }
 
@@ -273,6 +262,134 @@ public class UserService {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Utilisateur non trouvé"));
         user.setActif(false);
+
+        // Also deactivate linked entities
+        if (user.getLivreur() != null) {
+            user.getLivreur().setActif(false);
+        }
+
         userRepository.save(user);
+    }
+
+    // ========== Private Helper Methods ==========
+
+    private void validateUniqueConstraints(RegisterRequest request) {
+        if (userRepository.existsByUsername(request.getUsername())) {
+            throw new DuplicateResourceException("Ce nom d'utilisateur existe déjà");
+        }
+
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new DuplicateResourceException("Cet email existe déjà");
+        }
+
+        // Validate business entity unique constraints
+        if (hasRole(request, "ROLE_LIVREUR") && request.getTelephone() != null) {
+            if (livreurRepository.existsByTelephone(request.getTelephone())) {
+                throw new DuplicateResourceException("Un livreur avec ce téléphone existe déjà");
+            }
+        }
+
+        if (hasRole(request, "ROLE_CLIENT")) {
+            if (clientExpediteurRepository.existsByEmail(request.getEmail())) {
+                throw new DuplicateResourceException("Un client avec cet email existe déjà");
+            }
+        }
+    }
+
+    private void validateBusinessDataRequirements(RegisterRequest request) {
+        if (hasRole(request, "ROLE_LIVREUR") && request.getLivreurData() == null) {
+            throw new IllegalArgumentException(
+                    "livreurData est requis pour créer un utilisateur avec le rôle LIVREUR");
+        }
+
+        if (hasRole(request, "ROLE_CLIENT") && request.getClientData() == null) {
+            throw new IllegalArgumentException(
+                    "clientData est requis pour créer un utilisateur avec le rôle CLIENT");
+        }
+    }
+
+    private User createUserEntity(RegisterRequest request) {
+        Set<Role> roles = request.getRoles().stream()
+                .map(roleName -> roleRepository.findByName(roleName)
+                        .orElseThrow(() -> new ResourceNotFoundException("Rôle non trouvé: " + roleName)))
+                .collect(Collectors.toSet());
+
+        return User.builder()
+                .username(request.getUsername())
+                .email(request.getEmail())
+                .password(passwordEncoder.encode(request.getPassword()))
+                .nom(request.getNom())
+                .prenom(request.getPrenom())
+                .telephone(request.getTelephone())
+                .actif(true)
+                .roles(roles)
+                .build();
+    }
+
+    private Livreur createLivreurEntity(RegisterRequest request) {
+        RegisterRequest.LivreurCreationData data = request.getLivreurData();
+
+        Livreur livreur = new Livreur();
+        livreur.setNom(request.getNom());
+        livreur.setPrenom(request.getPrenom());
+        livreur.setTelephone(request.getTelephone());
+        livreur.setVehicule(data.getVehicule());
+        livreur.setActif(data.getActif() != null ? data.getActif() : true);
+
+        if (data.getZoneAssigneeId() != null) {
+            Zone zone = zoneRepository.findById(data.getZoneAssigneeId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Zone non trouvée"));
+            livreur.setZoneAssignee(zone);
+        }
+
+        return livreur;
+    }
+
+    private ClientExpediteur createClientEntity(RegisterRequest request) {
+        RegisterRequest.ClientCreationData data = request.getClientData();
+
+        ClientExpediteur client = new ClientExpediteur();
+        client.setNom(request.getNom());
+        client.setPrenom(request.getPrenom());
+        client.setEmail(request.getEmail());
+        client.setTelephone(request.getTelephone());
+        client.setAdresse(data.getAdresse());
+
+        return client;
+    }
+
+    private void updateLivreurEntity(Livreur livreur, RegisterRequest request) {
+        livreur.setNom(request.getNom());
+        livreur.setPrenom(request.getPrenom());
+        livreur.setTelephone(request.getTelephone());
+
+        if (request.getLivreurData() != null) {
+            RegisterRequest.LivreurCreationData data = request.getLivreurData();
+            livreur.setVehicule(data.getVehicule());
+            livreur.setActif(data.getActif());
+
+            if (data.getZoneAssigneeId() != null) {
+                Zone zone = zoneRepository.findById(data.getZoneAssigneeId())
+                        .orElseThrow(() -> new ResourceNotFoundException("Zone non trouvée"));
+                livreur.setZoneAssignee(zone);
+            } else {
+                livreur.setZoneAssignee(null);
+            }
+        }
+    }
+
+    private void updateClientEntity(ClientExpediteur client, RegisterRequest request) {
+        client.setNom(request.getNom());
+        client.setPrenom(request.getPrenom());
+        client.setEmail(request.getEmail());
+        client.setTelephone(request.getTelephone());
+
+        if (request.getClientData() != null) {
+            client.setAdresse(request.getClientData().getAdresse());
+        }
+    }
+
+    private boolean hasRole(RegisterRequest request, String roleName) {
+        return request.getRoles() != null && request.getRoles().contains(roleName);
     }
 }
