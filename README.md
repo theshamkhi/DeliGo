@@ -100,6 +100,32 @@ SmartLogi uses DeliGo to manage the entire logistics cycle:
 
 ---
 
+## 📸 Screenshots
+
+### Swagger UI - Interactive API Documentation
+
+<img width="1896" height="902" alt="Screenshot 2025-12-17 181328" src="https://github.com/user-attachments/assets/f35512c7-e6fc-4acd-b803-197bd6bdc108" />
+*Complete API documentation with authentication support*
+
+### UML Class Diagram
+
+![UML Diagram](uml/Class.png)
+*Entity relationship diagram showing the domain model*
+
+### JaCoCo Code Coverage Report
+
+<img width="1919" height="906" alt="Screenshot 2025-12-17 190208" src="https://github.com/user-attachments/assets/fc2193e4-cd03-4825-814f-23355e7b43f6" />
+
+*Test coverage report - Target: 60%+*
+
+### SonarQube Quality Analysis
+
+<img width="1919" height="906" alt="Screenshot 2025-12-17 195330" src="https://github.com/user-attachments/assets/761e9c63-6284-445c-a3ad-530c3db4fc9e" />
+
+*Code quality metrics and technical debt analysis*
+
+---
+
 ## 🏗️ Architecture
 
 The project follows **Domain-Driven Design (DDD)** principles with clean architecture:
@@ -150,16 +176,6 @@ src/main/java/com/shamkhi/deligo/
         ├── ResourceNotFoundException
         └── DuplicateResourceException
 ```
-
-### Architectural Patterns
-
-- **Layered Architecture**: Clear separation of concerns
-- **Repository Pattern**: Data access abstraction
-- **DTO Pattern**: Data transfer objects for API
-- **Mapper Pattern**: Entity-DTO conversion with MapStruct
-- **Service Layer**: Business logic encapsulation
-- **Filter Pattern**: JWT authentication filter
-
 ---
 
 ## 🔐 Security
@@ -286,252 +302,6 @@ docker-compose logs -f
 # Stop services
 docker-compose down
 ```
-
----
-
-## 📡 API Documentation
-
-### Authentication Endpoints
-
-#### Login
-```http
-POST /api/v1/auth/login
-Content-Type: application/json
-
-{
-  "username": "admin",
-  "password": "admin123"
-}
-
-Response:
-{
-  "token": "eyJhbGciOiJIUzI1NiJ9...",
-  "type": "Bearer",
-  "id": "user-admin-001",
-  "username": "admin",
-  "email": "admin@deligo.com",
-  "nom": "Administrateur",
-  "prenom": "Système",
-  "roles": ["ROLE_MANAGER"],
-  "permissions": ["READ_COLIS", "WRITE_COLIS", ...]
-}
-```
-
-#### Register
-```http
-POST /api/v1/auth/register
-Content-Type: application/json
-
-{
-  "username": "john.doe",
-  "email": "john@example.com",
-  "password": "password123",
-  "nom": "Doe",
-  "prenom": "John",
-  "telephone": "0612345678",
-  "roles": ["ROLE_CLIENT"]
-}
-```
-
-#### Get Current User
-```http
-GET /api/v1/auth/me
-Authorization: Bearer <token>
-```
-
-### Package Endpoints (Secured)
-
-All package endpoints require authentication via JWT token in the Authorization header:
-```
-Authorization: Bearer <your_jwt_token>
-```
-
-#### List Packages
-```http
-GET /api/v1/colis?page=0&size=20&sort=dateCreation,desc
-Authorization: Bearer <token>
-
-Response: Paginated list (filtered by role)
-- MANAGER: sees all packages
-- LIVREUR: sees only assigned packages
-- CLIENT: sees only own packages
-```
-
-#### Create Package
-```http
-POST /api/v1/colis
-Authorization: Bearer <token>
-Content-Type: application/json
-
-{
-  "description": "Package description",
-  "poids": 2.5,
-  "priorite": "NORMALE",
-  "clientExpediteurId": "client-123",
-  "destinataireId": "dest-456",
-  "villeDestination": "Casablanca",
-  "dateLimiteLivraison": "2024-12-31T23:59:59"
-}
-```
-
-#### Update Package Status
-```http
-PATCH /api/v1/colis/{id}/statut
-Authorization: Bearer <token>
-Content-Type: application/json
-
-{
-  "statut": "EN_COURS",
-  "commentaire": "Package picked up",
-  "modifiePar": "livreur-789"
-}
-```
-
-#### Get Package Details
-```http
-GET /api/v1/colis/{id}
-Authorization: Bearer <token>
-```
-
-#### Search Packages
-```http
-GET /api/v1/colis/search?keyword=casablanca&page=0&size=20
-Authorization: Bearer <token>
-```
-
-#### Filter Packages
-```http
-GET /api/v1/colis/filter?statut=EN_COURS&priorite=URGENTE&zoneId=zone-123
-Authorization: Bearer <token>
-```
-
-#### Get Package History
-```http
-GET /api/v1/colis/{id}/historique
-Authorization: Bearer <token>
-```
-
-#### Get Statistics
-```http
-GET /api/v1/colis/statistiques
-Authorization: Bearer <token>
-Requires: ROLE_MANAGER
-```
-
-### Admin Endpoints (ROLE_MANAGER only)
-
-#### User Management
-```http
-GET    /api/v1/admin/users
-POST   /api/v1/admin/users
-GET    /api/v1/admin/users/{id}
-PUT    /api/v1/admin/users/{id}
-DELETE /api/v1/admin/users/{id}
-PATCH  /api/v1/admin/users/{id}/activate
-PATCH  /api/v1/admin/users/{id}/deactivate
-```
-
-#### Permission Management
-```http
-GET    /api/v1/admin/permissions
-POST   /api/v1/admin/permissions
-PUT    /api/v1/admin/permissions/{id}
-DELETE /api/v1/admin/permissions/{id}
-```
-
-#### Role Management
-```http
-GET    /api/v1/admin/roles
-POST   /api/v1/admin/roles
-PUT    /api/v1/admin/roles/{id}
-DELETE /api/v1/admin/roles/{id}
-
-# Assign/Remove permissions to/from roles
-POST   /api/v1/admin/roles/{roleId}/permissions/{permissionId}
-DELETE /api/v1/admin/roles/{roleId}/permissions/{permissionId}
-GET    /api/v1/admin/roles/{roleId}/permissions
-```
-
-### Client & Recipient Endpoints
-```http
-GET    /api/v1/clients                  # List clients
-POST   /api/v1/clients                  # Create client
-GET    /api/v1/clients/{id}             # Get client details
-PUT    /api/v1/clients/{id}             # Update client
-DELETE /api/v1/clients/{id}             # Delete client (MANAGER only)
-
-GET    /api/v1/destinataires            # List recipients
-POST   /api/v1/destinataires            # Create recipient
-GET    /api/v1/destinataires/{id}       # Get recipient
-PUT    /api/v1/destinataires/{id}       # Update recipient
-DELETE /api/v1/destinataires/{id}       # Delete recipient (MANAGER only)
-```
-
-### Delivery Personnel Endpoints (ROLE_MANAGER only)
-```http
-GET    /api/v1/livreurs                 # List all delivery personnel
-GET    /api/v1/livreurs/actifs          # List active only
-POST   /api/v1/livreurs                 # Create delivery person
-GET    /api/v1/livreurs/{id}            # Get details
-PUT    /api/v1/livreurs/{id}            # Update
-DELETE /api/v1/livreurs/{id}            # Delete
-```
-
-### Zone & Product Endpoints
-```http
-GET    /api/v1/zones                    # List zones (MANAGER)
-POST   /api/v1/zones                    # Create zone (MANAGER)
-GET    /api/v1/zones/{id}               # Get zone (MANAGER)
-PUT    /api/v1/zones/{id}               # Update zone (MANAGER)
-DELETE /api/v1/zones/{id}               # Delete zone (MANAGER)
-
-GET    /api/v1/produits                 # List products
-POST   /api/v1/produits                 # Create product (MANAGER)
-GET    /api/v1/produits/{id}            # Get product
-PUT    /api/v1/produits/{id}            # Update product (MANAGER)
-DELETE /api/v1/produits/{id}            # Delete product (MANAGER)
-```
-
-### Package Statuses
-- `CREE` - Created
-- `EN_STOCK` - In warehouse
-- `COLLECTE` - Collected
-- `EN_COURS` - In transit
-- `LIVRE` - Delivered
-- `ANNULE` - Cancelled
-- `RETOURNE` - Returned
-
-### Priority Levels
-- `NORMALE` - Normal
-- `URGENTE` - Urgent
-- `TRES_URGENTE` - Very urgent
-
----
-
-## 📸 Screenshots
-
-### Swagger UI - Interactive API Documentation
-
-<img width="1896" height="902" alt="Screenshot 2025-12-17 181328" src="https://github.com/user-attachments/assets/f35512c7-e6fc-4acd-b803-197bd6bdc108" />
-*Complete API documentation with authentication support*
-
-### UML Class Diagram
-
-![UML Diagram](uml/Class.png)
-*Entity relationship diagram showing the domain model*
-
-### JaCoCo Code Coverage Report
-
-<img width="1919" height="906" alt="Screenshot 2025-12-17 190208" src="https://github.com/user-attachments/assets/fc2193e4-cd03-4825-814f-23355e7b43f6" />
-
-*Test coverage report - Target: 60%+*
-
-### SonarQube Quality Analysis
-
-<img width="1919" height="906" alt="Screenshot 2025-12-17 195330" src="https://github.com/user-attachments/assets/761e9c63-6284-445c-a3ad-530c3db4fc9e" />
-
-*Code quality metrics and technical debt analysis*
-
 ---
 
 ## 🧪 Testing & Quality
@@ -582,61 +352,3 @@ mvn clean verify
 # Skip tests
 mvn clean install -DskipTests
 ```
-
----
-
-## 🐳 Docker Deployment
-
-### Production Deployment
-
-#### Using Docker Compose (Recommended)
-
-**docker-compose.yml:**
-```yaml
-version: '3.8'
-
-services:
-  postgres:
-    image: postgres:15-alpine
-    container_name: deligo-postgres
-    environment:
-      POSTGRES_DB: DeliGo
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres-data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  app:
-    build: .
-    container_name: deligo-app
-    depends_on:
-      postgres:
-        condition: service_healthy
-    environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/DeliGo
-      SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
-      JWT_SECRET: ${JWT_SECRET}
-      JWT_EXPIRATION: 86400000
-    ports:
-      - "8080:8080"
-    restart: unless-stopped
-
-volumes:
-  postgres-data:
-```
-
----
-
-## 👥 Authors
-
-**Mohammed Shamkhi**
-- GitHub: [@theshamkhi](https://github.com/theshamkhi)
-- Email: theshamkhi1@gmail.com
